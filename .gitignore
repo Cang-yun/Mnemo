@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-electron/
+release/
+*.log
+*.7z
+*.env
+*.env.local
+*.tsbuildinfo
+Thumbs.db
+CODEBUDDY.md
+.npm-cache/
+.claude/
+.tools/
+.vite/

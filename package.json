@@ -1,0 +1,74 @@
+{
+  "name": "ebbinghaus-desktop-planner",
+  "version": "0.1.0",
+  "description": "Mnemo — Ebbinghaus memory planner",
+  "author": "Mnemo",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "electron": "electron .",
+    "desktop": "tsc -p electron/tsconfig.json && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "tsc && vite build && tsc -p electron/tsconfig.json",
+    "test": "vitest run",
+    "smoke": "node scripts/domain-smoke.mjs",
+    "pack": "npm run build && cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder --win"
+  },
+  "dependencies": {
+    "@tiptap/extension-link": "^3.22.5",
+    "@tiptap/extension-placeholder": "^3.22.5",
+    "@tiptap/extension-table": "^3.22.5",
+    "@tiptap/extension-table-cell": "^3.22.5",
+    "@tiptap/extension-table-header": "^3.22.5",
+    "@tiptap/extension-table-row": "^3.22.5",
+    "@tiptap/extension-task-item": "^3.22.5",
+    "@tiptap/extension-task-list": "^3.22.5",
+    "@tiptap/markdown": "^3.22.5",
+    "@tiptap/react": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
+    "@types/turndown": "^5.0.6",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.0",
+    "cross-env": "^10.0.0",
+    "lucide-react": "^0.468.0",
+    "marked": "^18.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "turndown": "^7.2.4",
+    "vite": "^7.0.0",
+    "wait-on": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "electron": "^37.0.0",
+    "electron-builder": "^26.8.1",
+    "resedit": "^3.0.2",
+    "sharp": "^0.34.5",
+    "to-ico": "^1.1.5",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "build": {
+    "appId": "com.mnemo.desktop",
+    "productName": "Mnemo",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
