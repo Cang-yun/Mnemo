@@ -133,9 +133,17 @@ export function createScheduleEntriesForKnowledge(
     .map(({ offset, stepIndex, date }) => {
       const learning = isLearningPlan(plan);
       const kind = learning ? (stepIndex === 0 ? "new" : "review") : "task";
-      const existingEntry = existingForKnowledge.find(
-        (entry) => entry.date === date && entry.kind === kind,
-      );
+      // Prefer matching by stepIndex so plan edits that shift a step's date
+      // (e.g. tweaking reviewOffsets) still preserve completion, feedback and
+      // remedial linkage. Fall back to (date, kind) matching for older
+      // entries created before stepIndex became authoritative.
+      const existingEntry =
+        existingForKnowledge.find(
+          (entry) => typeof entry.stepIndex === "number" && entry.stepIndex === stepIndex,
+        ) ??
+        existingForKnowledge.find(
+          (entry) => entry.date === date && entry.kind === kind,
+        );
       const completed =
         existingEntry?.completed ?? shouldAutoCompleteScheduledEntry(offset, date, today);
 

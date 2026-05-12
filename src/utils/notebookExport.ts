@@ -1,10 +1,17 @@
 import type { KnowledgeItem, Plan } from "../domain/types";
+import { collectImageReferences, IMAGE_URL_SCHEME } from "./imageRefs";
 
 interface NotebookExportInput {
   items: KnowledgeItem[];
   plans: Plan[];
   title: string;
   exportedAt?: Date;
+  /**
+   * When provided, image URLs of the form `mnemo-image://<filename>` will be
+   * rewritten to `./<assetsDirName>/<filename>` so the exported Markdown file
+   * can reference images that are saved alongside it.
+   */
+  assetsDirName?: string;
 }
 
 function escapeHeading(text: string) {
@@ -24,9 +31,17 @@ function formatDateTime(value: string) {
   });
 }
 
-function normalizeNote(note: string) {
+function normalizeNote(note: string, assetsDirName?: string) {
   const trimmed = note.trim();
-  return trimmed || "_暂无笔记_";
+  if (!trimmed) return "_暂无笔记_";
+  if (!assetsDirName) return trimmed;
+
+  // Rewrite `mnemo-image://<filename>` references so the exported Markdown
+  // resolves images sitting next to the file. Everything else (including
+  // already-relative paths, base64 data URLs, or external https images) is
+  // left untouched.
+  const pattern = new RegExp(`${IMAGE_URL_SCHEME}://([A-Za-z0-9]+\\.[a-z0-9]+)`, "gi");
+  return trimmed.replace(pattern, (_match, fileName) => `./${assetsDirName}/${fileName}`);
 }
 
 export function createNotebookExportMarkdown({
@@ -34,6 +49,7 @@ export function createNotebookExportMarkdown({
   plans,
   title,
   exportedAt = new Date(),
+  assetsDirName,
 }: NotebookExportInput) {
   const planById = new Map(plans.map((plan) => [plan.id, plan]));
   const groupedItems = new Map<string, KnowledgeItem[]>();
@@ -75,7 +91,7 @@ export function createNotebookExportMarkdown({
         `- 最后修改：${formatDateTime(item.updatedAt)}`,
         `- 标签：${(item.tags ?? []).join("、") || "无"}`,
         "",
-        normalizeNote(item.noteMarkdown),
+        normalizeNote(item.noteMarkdown, assetsDirName),
         "",
       );
     }
@@ -93,4 +109,19 @@ export function createNotebookExportFileName(label: string, exportedAt = new Dat
     .slice(0, 40) || "notes";
 
   return `Mnemo-${safeLabel}-${datePart}.md`;
+}
+
+export function collectExportImageNames(items: KnowledgeItem[]) {
+  const seen = new Set<string>();
+  for (const item of items) {
+    for (const name of collectImageReferences(item.noteMarkdown ?? "")) {
+      seen.add(name);
+    }
+  }
+  return Array.from(seen);
+}
+
+export function deriveAssetsDirName(mdFileName: string) {
+  const withoutExt = mdFileName.replace(/\.md$/i, "");
+  return `${withoutExt}-assets`;
 }

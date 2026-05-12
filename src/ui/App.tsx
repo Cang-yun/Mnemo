@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { todayIso } from "../domain/date";
 import { getAppearanceTheme, getPlanTheme } from "../domain/themes";
+import { subscribe as subscribeDirty, hasAnyDirty } from "../storage/unsavedGuard";
 import { useAppStore } from "../storage/useAppStore";
 import { DateWorkspace } from "./DateWorkspace";
 import { KnowledgePanel } from "./KnowledgePanel";
@@ -12,11 +13,26 @@ import { SettingsPage } from "./SettingsPage";
 import { Sidebar, type AppView } from "./Sidebar";
 import { TodayOverview } from "./TodayOverview";
 import { TitleBar } from "./TitleBar";
+import { UnsavedGuardProvider, useUnsavedGuard } from "./useUnsavedGuard";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function App() {
+  return (
+    <ErrorBoundary>
+      <UnsavedGuardProvider>
+        <AppShell />
+      </UnsavedGuardProvider>
+    </ErrorBoundary>
+  );
+}
+
+function AppShell() {
   const store = useAppStore();
   const [view, setView] = useState<AppView>(store.data.startupView);
   const [focusDate, setFocusDate] = useState(todayIso());
+  const [focusKnowledgeId, setFocusKnowledgeId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const guard = useUnsavedGuard();
 
   const activeTheme = useMemo(
     () => getPlanTheme(store.activePlan?.themeId ?? "sage"),
@@ -31,8 +47,9 @@ export function App() {
     window.ebbinghausDesktop?.setTitleBarTheme({
       color: appearanceTheme.surface,
       symbolColor: appearanceTheme.ink,
+      paper: appearanceTheme.paper,
     });
-  }, [appearanceTheme.ink, appearanceTheme.surface]);
+  }, [appearanceTheme.ink, appearanceTheme.paper, appearanceTheme.surface]);
 
   useEffect(() => {
     window.ebbinghausDesktop
@@ -43,10 +60,98 @@ export function App() {
       .catch(() => undefined);
   }, [store.data.closeBehavior, store.data.launchAtLogin]);
 
-  function openPlan(planId: string, date = todayIso()) {
-    store.setActivePlan(planId);
-    setFocusDate(date);
-    setView("planDetail");
+  // Reflect dirty state in the document title so users get a visible hint.
+  useEffect(() => {
+    const update = () => {
+      const dirty = hasAnyDirty();
+      setDirty(dirty);
+      document.title = dirty ? "● Mnemo" : "Mnemo";
+      window.ebbinghausDesktop?.setDirtyState?.(dirty);
+    };
+    update();
+    return subscribeDirty(update);
+  }, []);
+
+  // Main-process asks the renderer to confirm a close. We always flush the
+  // latest store synchronously first so any pending async save (file storage
+  // writes go through IPC and would otherwise be aborted when the window is
+  // destroyed) is guaranteed to land on disk.
+  useEffect(() => {
+    const api = window.ebbinghausDesktop;
+    if (!api?.onConfirmClose || !api?.respondConfirmClose) return;
+    return api.onConfirmClose(() => {
+      const flushAndDiscard = () => {
+        store.flushPendingSavesSync();
+        api.respondConfirmClose("discard");
+      };
+
+      if (!hasAnyDirty()) {
+        flushAndDiscard();
+        return;
+      }
+      void guard
+        .runGuarded(flushAndDiscard, { allowSave: false })
+        .then((ok) => {
+          if (!ok) api.respondConfirmClose("cancel");
+        });
+    });
+  }, [guard, store]);
+
+  const changeView = useCallback(
+    (nextView: AppView) => {
+      void guard.runGuarded(() => setView(nextView));
+    },
+    [guard],
+  );
+
+  const openPlan = useCallback(
+    (planId: string, date = todayIso()) => {
+      void guard.runGuarded(() => {
+        store.setActivePlan(planId);
+        setFocusDate(date);
+        setView("planDetail");
+      });
+    },
+    [guard, store],
+  );
+
+  const openKnowledgeNote = useCallback(
+    (knowledgeId: string) => {
+      void guard.runGuarded(() => {
+        setFocusKnowledgeId(knowledgeId);
+        setView("notebook");
+      });
+    },
+    [guard],
+  );
+
+  const backToPlans = useCallback(() => {
+    void guard.runGuarded(() => setView("plans"));
+  }, [guard]);
+
+  if (!store.loaded) {
+    return (
+      <main
+        className="app-frame app-splash"
+        style={
+          {
+            "--app-paper": appearanceTheme.paper,
+            "--app-surface": appearanceTheme.surface,
+            "--app-ink": appearanceTheme.ink,
+            "--app-muted": appearanceTheme.muted,
+            "--app-line": appearanceTheme.line,
+            "--title-font": appearanceTheme.titleFont,
+            "--body-font": appearanceTheme.bodyFont,
+          } as React.CSSProperties
+        }
+      >
+        <TitleBar title="Mnemo" />
+        <div className="app-splash-body" role="status" aria-live="polite">
+          <p className="eyebrow">Mnemo</p>
+          <h1>正在加载...</h1>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -72,9 +177,22 @@ export function App() {
         } as React.CSSProperties
       }
     >
-      <TitleBar />
+      <TitleBar title={dirty ? "● Mnemo" : "Mnemo"} />
+      {store.saveError ? (
+        <div className="save-error-banner" role="alert">
+          <span>{store.saveError}</span>
+          <button
+            type="button"
+            className="save-error-dismiss"
+            onClick={store.clearSaveError}
+            aria-label="关闭提示"
+          >
+            知道了
+          </button>
+        </div>
+      ) : null}
       <div className="app-body">
-        <Sidebar activeView={view} onChangeView={setView} />
+        <Sidebar activeView={view} onChangeView={changeView} />
 
         <section className="content-shell">
           {view === "today" ? (
@@ -118,6 +236,7 @@ export function App() {
               plans={store.data.plans}
               knowledgeItems={store.data.knowledgeItems}
               scheduleEntries={store.data.scheduleEntries}
+              focusKnowledgeId={focusKnowledgeId}
               onOpenPlan={openPlan}
               onUpdateNote={store.updateKnowledgeNote}
               onUpdateTitle={store.updateKnowledgeTitle}
@@ -163,7 +282,7 @@ export function App() {
                     {store.activePlan.startDate} 起，共 {store.activePlan.dayCount} 天
                   </p>
                 </div>
-                <button className="quiet-button" onClick={() => setView("plans")}>
+                <button className="quiet-button" onClick={backToPlans}>
                   返回计划
                 </button>
               </div>
@@ -185,6 +304,7 @@ export function App() {
                   onUpdateTitle={store.updateKnowledgeTitle}
                   onUpdateTags={store.updateKnowledgeTags}
                   onDeleteKnowledge={store.deleteKnowledge}
+                  onOpenNote={openKnowledgeNote}
                 />
               </section>
             </section>

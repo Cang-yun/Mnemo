@@ -31,6 +31,13 @@ export function DateWorkspace({
     [knowledgeItems],
   );
 
+  // Drafts are keyed by date, but dates are shared across plans. When the
+  // active plan changes we must clear any leftover drafts so typing in plan A
+  // doesn't reappear in plan B on the same date.
+  useEffect(() => {
+    setDrafts({});
+  }, [plan.id]);
+
   useEffect(() => {
     const targetRow = rowRefs.current[targetDate];
     if (!targetRow) return;

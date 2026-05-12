@@ -1,6 +1,7 @@
 import { Check, ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAppearanceThemes } from "../domain/themes";
+import { collectImageReferencesFromNotes } from "../utils/imageRefs";
 import type {
   AppData,
   AppearanceTheme,
@@ -276,7 +277,22 @@ export function SettingsPage({
 
   async function exportBackup() {
     const defaultFileName = `mnemo-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    const content = JSON.stringify(appData, null, 2);
+    const imageNames = collectImageReferencesFromNotes(
+      appData.knowledgeItems.map((item) => item.noteMarkdown),
+    );
+    const imageBundle = await (async () => {
+      if (imageNames.length === 0 || !window.ebbinghausDesktop?.readImages) return {};
+      try {
+        return await window.ebbinghausDesktop.readImages(imageNames);
+      } catch (error) {
+        console.warn("Failed to read images for backup:", error);
+        return {};
+      }
+    })();
+
+    const payload = { ...appData, imageBundle };
+    const content = JSON.stringify(payload, null, 2);
+    const imageCount = Object.keys(imageBundle).length;
 
     if (!window.ebbinghausDesktop?.exportBackup) {
       const blob = new Blob([content], { type: "application/json;charset=utf-8" });
@@ -286,7 +302,11 @@ export function SettingsPage({
       link.download = defaultFileName;
       link.click();
       URL.revokeObjectURL(url);
-      setDataMessage("已准备备份文件。");
+      setDataMessage(
+        imageCount > 0
+          ? `已准备备份文件，含 ${imageCount} 张图片。`
+          : "已准备备份文件。",
+      );
       return;
     }
 
@@ -298,7 +318,11 @@ export function SettingsPage({
 
     setLastBackupPath(result.filePath);
     localStorage.setItem("mnemo:lastBackupPath", result.filePath);
-    setDataMessage("备份已保存。");
+    setDataMessage(
+      imageCount > 0
+        ? `备份已保存，含 ${imageCount} 张图片。`
+        : "备份已保存。",
+    );
   }
 
   async function importBackup() {
@@ -317,14 +341,51 @@ export function SettingsPage({
     }
   }
 
-  function confirmImportBackup() {
+  async function confirmImportBackup() {
     if (!pendingImportData) return;
+    const raw = pendingImportData as { imageBundle?: Record<string, string> };
+    let restoredImages = 0;
+
+    if (
+      raw.imageBundle &&
+      typeof raw.imageBundle === "object" &&
+      window.ebbinghausDesktop?.writeImages
+    ) {
+      try {
+        const outcome = await window.ebbinghausDesktop.writeImages(raw.imageBundle);
+        restoredImages = outcome.written;
+      } catch (error) {
+        console.warn("Failed to restore images from backup:", error);
+      }
+    }
+
     onReplaceData(pendingImportData);
+
+    // Clean up images from the previous dataset that the restored data no
+    // longer references, so the userData/images folder does not grow forever.
+    if (window.ebbinghausDesktop?.pruneImages) {
+      const keepNames = raw.imageBundle ? Object.keys(raw.imageBundle) : [];
+      const restored = pendingImportData as {
+        knowledgeItems?: Array<{ noteMarkdown?: string }>;
+      };
+      const referenced = collectImageReferencesFromNotes(
+        (restored.knowledgeItems ?? []).map((item) => item.noteMarkdown ?? ""),
+      );
+      const keepSet = new Set([...keepNames, ...referenced]);
+      try {
+        await window.ebbinghausDesktop.pruneImages(Array.from(keepSet));
+      } catch (error) {
+        console.warn("Failed to prune orphaned images after import:", error);
+      }
+    }
+
     setPendingImportData(null);
-    setDataMessage("数据已恢复。");
+    setDataMessage(
+      restoredImages > 0 ? `数据已恢复，含 ${restoredImages} 张图片。` : "数据已恢复。",
+    );
   }
 
-  function confirmClearData() {
+  async function confirmClearData() {
     onReplaceData({
       ...appData,
       plans: [],
@@ -332,6 +393,17 @@ export function SettingsPage({
       scheduleEntries: [],
       activePlanId: null,
     });
+
+    // After clearing all knowledge items, every image in userData/images is
+    // orphaned. Pruning keeps the local folder tidy; failures are logged only.
+    if (window.ebbinghausDesktop?.pruneImages) {
+      try {
+        await window.ebbinghausDesktop.pruneImages([]);
+      } catch (error) {
+        console.warn("Failed to prune images after clear:", error);
+      }
+    }
+
     setClearingData(false);
     setDataMessage("当前数据已清空。");
   }

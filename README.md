@@ -34,6 +34,17 @@ npm test               # 单元测试
 npm run pack           # 输出 NSIS 安装包到 release/
 ```
 
+## 旧版数据迁移
+
+0.1.x 及更早版本把数据保存在 Chromium localStorage（上限约 10 MB），新版本改用 `<userData>/state.json`（无上限，原子写）。升级后如果发现数据没有出现，在关闭 Mnemo 后执行一次：
+
+```bash
+npm run migrate-legacy                             # 默认 userData 路径
+npm run migrate-legacy -- --userData "<自定义路径>"  # 便携版请传 release/win-unpacked/user-data
+```
+
+脚本会临时启动一个无界面的 Electron 进程，从 localStorage 读出旧数据并写入 `state.json`，现有 `state.json` 会备份为 `state.json.pre-migration-<时间戳>`。
+
 ## 技术栈
 
 Electron · React 19 · Vite · TypeScript · TipTap · Vitest

@@ -1,6 +1,7 @@
 import { Check, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { formatChineseDate } from "../domain/date";
+import { localDateFromCompletedAt } from "../domain/schedule";
 import { getPlanTheme } from "../domain/themes";
 import type { KnowledgeItem, Plan, ReviewFeedback, ScheduleEntry } from "../domain/types";
 
@@ -46,7 +47,9 @@ export function TodayOverview({
   const completedTodayEntries = scheduleEntries.filter(
     (entry) =>
       entry.completed &&
-      (entry.date === today || entry.completedAt?.slice(0, 10) === today),
+      (entry.completedDate === today ||
+        entry.date === today ||
+        localDateFromCompletedAt(entry.completedAt) === today),
   );
 
   const filterEntries = (entries: ScheduleEntry[]) =>

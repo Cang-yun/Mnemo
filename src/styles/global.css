@@ -14,8 +14,8 @@
   color-scheme: light;
   font-family:
     var(--body-font);
-  color: #27231d;
-  background: #F2F3F5;
+  color: var(--app-ink);
+  background: var(--app-paper);
   font-synthesis: none;
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: auto;
@@ -81,7 +81,7 @@ input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid rgba(46, 40, 31, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, var(--app-surface) 78%, transparent);
   color: var(--app-ink);
@@ -106,8 +106,8 @@ textarea:focus {
 }
 
 .app-frame {
-  display: grid;
-  grid-template-rows: 36px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   margin: 0;
@@ -120,6 +120,7 @@ textarea:focus {
 }
 
 .titlebar {
+  flex: 0 0 36px;
   display: flex;
   align-items: center;
   height: 36px;
@@ -140,10 +141,102 @@ textarea:focus {
 }
 
 .app-body {
+  flex: 1;
   display: grid;
   grid-template-columns: clamp(168px, 15vw, 218px) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
+}
+
+.save-error-banner {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: color-mix(in srgb, var(--app-weak) 18%, var(--app-surface));
+  color: var(--app-ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-weak) 40%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.save-error-banner span {
+  min-width: 0;
+}
+
+.save-error-dismiss {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--app-weak) 60%, transparent);
+  background: transparent;
+  color: var(--app-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.save-error-dismiss:hover {
+  background: color-mix(in srgb, var(--app-weak) 25%, transparent);
+}
+
+.app-splash {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-splash-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-muted);
+  font-family: var(--body-font);
+}
+
+.app-splash-body h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 550;
+  color: var(--app-ink);
+  font-family: var(--title-font);
+}
+
+.save-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  background: color-mix(in srgb, var(--app-weak) 18%, var(--app-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--app-weak) 40%, var(--app-line));
+  color: var(--app-ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.save-error-banner span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.save-error-dismiss {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--app-weak) 50%, var(--app-line));
+  border-radius: 6px;
+  background: var(--app-surface);
+  color: var(--app-ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-error-dismiss:hover {
+  background: color-mix(in srgb, var(--app-weak) 12%, var(--app-surface));
 }
 
 .sidebar {
@@ -282,10 +375,10 @@ textarea:focus {
   gap: 7px;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid rgba(42, 36, 28, 0.12);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   border-radius: 999px;
-  background: rgba(255, 253, 248, 0.58);
-  color: rgba(42, 36, 28, 0.62);
+  background: color-mix(in srgb, var(--app-surface) 58%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 62%, transparent);
   font-size: 12px;
   transition:
     background 160ms ease,
@@ -296,8 +389,8 @@ textarea:focus {
 
 .markdown-help-trigger:hover,
 .markdown-help-trigger:focus-visible {
-  border-color: color-mix(in srgb, var(--app-accent) 42%, rgba(42, 36, 28, 0.12));
-  background: color-mix(in srgb, var(--app-accent-soft) 42%, rgba(255, 253, 248, 0.76));
+  border-color: color-mix(in srgb, var(--app-accent) 42%, color-mix(in srgb, var(--app-ink) 12%, transparent));
+  background: color-mix(in srgb, var(--app-accent-soft) 42%, color-mix(in srgb, var(--app-surface) 76%, transparent));
   color: var(--app-accent-strong);
   transform: translateY(-1px);
 }
@@ -309,14 +402,14 @@ textarea:focus {
   right: 0;
   width: min(390px, calc(100vw - 320px));
   padding: 18px 18px 16px;
-  border: 1px solid rgba(42, 36, 28, 0.12);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   border-radius: 6px;
   background:
-    linear-gradient(rgba(84, 73, 58, 0.035) 1px, transparent 1px),
-    rgba(255, 253, 248, 0.97);
+    linear-gradient(color-mix(in srgb, var(--app-ink) 3.5%, transparent) 1px, transparent 1px),
+    color-mix(in srgb, var(--app-surface) 97%, transparent);
   background-size: 100% 28px;
-  box-shadow: 0 18px 46px rgba(42, 36, 28, 0.14);
-  color: rgba(42, 36, 28, 0.72);
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--app-ink) 14%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 72%, transparent);
   opacity: 0;
   pointer-events: none;
   transform: translateY(-4px);
@@ -334,7 +427,7 @@ textarea:focus {
 
 .markdown-help-popover h2 {
   margin: -2px 0 8px;
-  color: #2b261f;
+  color: var(--app-ink);
   font-size: 22px;
 }
 
@@ -354,7 +447,7 @@ textarea:focus {
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 12px;
   padding-top: 8px;
-  border-top: 1px solid rgba(42, 36, 28, 0.08);
+  border-top: 1px solid color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .markdown-help-popover dt {
@@ -375,10 +468,10 @@ textarea:focus {
   height: 74px;
   opacity: 0.42;
   background:
-    radial-gradient(ellipse at 82% 32%, rgba(80, 86, 75, 0.15), transparent 16%),
-    linear-gradient(158deg, transparent 0 45%, rgba(92, 102, 88, 0.13) 46% 48%, transparent 49%),
-    radial-gradient(ellipse at 68% 62%, rgba(92, 102, 88, 0.16), transparent 36%),
-    radial-gradient(ellipse at 34% 66%, rgba(92, 102, 88, 0.1), transparent 32%);
+    radial-gradient(ellipse at 82% 32%, color-mix(in srgb, var(--app-ink) 15%, transparent), transparent 16%),
+    linear-gradient(158deg, transparent 0 45%, color-mix(in srgb, var(--app-ink) 13%, transparent) 46% 48%, transparent 49%),
+    radial-gradient(ellipse at 68% 62%, color-mix(in srgb, var(--app-ink) 16%, transparent), transparent 36%),
+    radial-gradient(ellipse at 34% 66%, color-mix(in srgb, var(--app-ink) 10%, transparent), transparent 32%);
 }
 
 .today-layout {
@@ -416,10 +509,10 @@ textarea:focus {
 .today-filter button {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 999px;
   background: transparent;
-  color: rgba(42, 36, 28, 0.58);
+  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
   font-size: 12px;
 }
 
@@ -442,7 +535,7 @@ textarea:focus {
   padding-bottom: 56px;
   scroll-padding-bottom: 56px;
   scrollbar-width: thin;
-  scrollbar-color: var(--app-accent) rgba(42, 36, 28, 0.08);
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .today-task-list {
@@ -456,7 +549,7 @@ textarea:focus {
   padding-bottom: 34px;
   scroll-padding-bottom: 34px;
   scrollbar-width: thin;
-  scrollbar-color: var(--app-accent) rgba(42, 36, 28, 0.08);
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .today-group {
@@ -469,13 +562,13 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   margin: 4px 0 2px;
-  color: rgba(42, 36, 28, 0.52);
+  color: color-mix(in srgb, var(--app-ink) 52%, transparent);
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .today-group.overdue > header {
-  color: #9b463d;
+  color: var(--app-weak);
 }
 
 .today-task {
@@ -510,7 +603,7 @@ textarea:focus {
 }
 
 .today-task:hover {
-  border-color: color-mix(in srgb, var(--task-accent, var(--accent)) 34%, rgba(42, 36, 28, 0.12));
+  border-color: color-mix(in srgb, var(--task-accent, var(--accent)) 34%, color-mix(in srgb, var(--app-ink) 12%, transparent));
   transform: translateX(2px);
 }
 
@@ -520,7 +613,7 @@ textarea:focus {
 }
 
 .today-task.overdue::before {
-  background: linear-gradient(90deg, rgba(170, 76, 64, 0.12), transparent 68%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--app-weak) 12%, transparent), transparent 68%);
   opacity: 1;
 }
 
@@ -529,7 +622,7 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(42, 36, 28, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 50%;
   background: transparent;
   color: transparent;
@@ -553,11 +646,11 @@ textarea:focus {
 .task-open {
   width: 28px;
   height: 28px;
-  color: rgba(42, 36, 28, 0.38);
+  color: color-mix(in srgb, var(--app-ink) 38%, transparent);
 }
 
 .task-open:hover {
-  border-color: color-mix(in srgb, var(--task-accent, var(--accent)) 38%, rgba(42, 36, 28, 0.16));
+  border-color: color-mix(in srgb, var(--task-accent, var(--accent)) 38%, color-mix(in srgb, var(--app-ink) 16%, transparent));
   color: var(--task-accent, var(--accent));
   transform: translateX(2px);
 }
@@ -565,7 +658,7 @@ textarea:focus {
 .today-task.completed .task-check {
   border-color: var(--task-accent);
   background: var(--task-accent);
-  color: #fffaf1;
+  color: var(--app-surface);
   animation: check-pop 220ms ease;
 }
 
@@ -577,7 +670,7 @@ textarea:focus {
   min-width: 0;
   border: 0;
   background: transparent;
-  color: #2b261f;
+  color: var(--app-ink);
   text-align: left;
 }
 
@@ -610,7 +703,7 @@ textarea:focus {
 .task-body small {
   grid-column: 2;
   margin-top: -4px;
-  color: rgba(42, 36, 28, 0.5);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
 }
 
 .task-tags {
@@ -648,10 +741,10 @@ textarea:focus {
 .task-actions button {
   height: 26px;
   padding: 0 7px;
-  border: 1px solid rgba(42, 36, 28, 0.12);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   border-radius: 999px;
-  background: rgba(255, 253, 248, 0.58);
-  color: rgba(42, 36, 28, 0.62);
+  background: color-mix(in srgb, var(--app-surface) 58%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 62%, transparent);
   font-size: 12px;
   transition:
     background 150ms ease,
@@ -667,7 +760,7 @@ textarea:focus {
 }
 
 .today-task.completed .task-body strong {
-  color: rgba(42, 36, 28, 0.48);
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
   text-decoration: line-through;
 }
 
@@ -706,7 +799,7 @@ textarea:focus {
   display: grid;
   gap: 4px;
   padding-left: 20px;
-  border-left: 1px solid rgba(42, 36, 28, 0.1);
+  border-left: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .today-summary strong {
@@ -717,14 +810,14 @@ textarea:focus {
 }
 
 .today-summary span {
-  color: rgba(42, 36, 28, 0.56);
+  color: color-mix(in srgb, var(--app-ink) 56%, transparent);
   font-size: 13px;
 }
 
 .blank-panel {
   max-width: 520px;
   padding-top: 16px;
-  color: rgba(42, 36, 28, 0.58);
+  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
 }
 
 .blank-panel p {
@@ -751,9 +844,9 @@ textarea:focus {
 
 .quiet-button {
   padding: 0 12px;
-  border: 1px solid rgba(42, 36, 28, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   background: transparent;
-  color: rgba(42, 36, 28, 0.68);
+  color: color-mix(in srgb, var(--app-ink) 68%, transparent);
 }
 
 .new-plan-panel {
@@ -762,7 +855,7 @@ textarea:focus {
   gap: 8px;
   padding-bottom: 18px;
   margin-bottom: 18px;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
 }
 
 .month-page {
@@ -775,7 +868,7 @@ textarea:focus {
   grid-template-columns: 34px auto 34px;
   align-items: center;
   gap: 10px;
-  color: rgba(42, 36, 28, 0.68);
+  color: color-mix(in srgb, var(--app-ink) 68%, transparent);
 }
 
 .month-controls button {
@@ -784,10 +877,10 @@ textarea:focus {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 50%;
   background: transparent;
-  color: rgba(42, 36, 28, 0.58);
+  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
 }
 
 .month-heading-actions {
@@ -804,10 +897,10 @@ textarea:focus {
 .month-filter button {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 999px;
   background: transparent;
-  color: rgba(42, 36, 28, 0.58);
+  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
   font-size: 12px;
 }
 
@@ -827,19 +920,19 @@ textarea:focus {
   overflow: auto;
   padding-bottom: 28px;
   scroll-padding-bottom: 28px;
-  border-top: 1px solid rgba(42, 36, 28, 0.12);
-  border-left: 1px solid rgba(42, 36, 28, 0.1);
+  border-top: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
   scrollbar-width: thin;
-  scrollbar-color: var(--app-accent) rgba(42, 36, 28, 0.08);
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .month-weekday {
   display: flex;
   align-items: center;
   padding: 0 8px;
-  border-right: 1px solid rgba(42, 36, 28, 0.1);
-  border-bottom: 1px solid rgba(42, 36, 28, 0.1);
-  color: rgba(42, 36, 28, 0.46);
+  border-right: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 46%, transparent);
   font-size: 12px;
 }
 
@@ -850,18 +943,18 @@ textarea:focus {
   min-height: 0;
   overflow: hidden;
   padding: 7px;
-  border-right: 1px solid rgba(42, 36, 28, 0.1);
-  border-bottom: 1px solid rgba(42, 36, 28, 0.1);
-  background: rgba(255, 253, 248, 0.2);
+  border-right: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
+  background: color-mix(in srgb, var(--app-surface) 20%, transparent);
 }
 
 .month-day.outside {
-  color: rgba(42, 36, 28, 0.28);
-  background: rgba(239, 234, 224, 0.28);
+  color: color-mix(in srgb, var(--app-ink) 28%, transparent);
+  background: color-mix(in srgb, var(--app-line) 28%, transparent);
 }
 
 .month-day.today {
-  background: color-mix(in srgb, var(--app-accent-soft) 48%, #fffdf8);
+  background: color-mix(in srgb, var(--app-accent-soft) 48%, var(--app-surface));
 }
 
 .month-day header {
@@ -884,7 +977,7 @@ textarea:focus {
 }
 
 .month-day header small {
-  color: rgba(42, 36, 28, 0.48);
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
   font-size: 11px;
 }
 
@@ -914,7 +1007,7 @@ textarea:focus {
   width: 16px;
   height: 16px;
   padding: 0;
-  border: 1px solid rgba(42, 36, 28, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 50%;
   background: transparent;
   color: transparent;
@@ -933,7 +1026,7 @@ textarea:focus {
 .month-task.completed .month-task-check {
   border-color: var(--task-accent);
   background: var(--task-accent);
-  color: #fffaf1;
+  color: var(--app-surface);
   animation: check-pop 220ms ease;
 }
 
@@ -967,12 +1060,12 @@ textarea:focus {
 }
 
 .month-task.completed .month-task-title {
-  color: rgba(42, 36, 28, 0.44);
+  color: color-mix(in srgb, var(--app-ink) 44%, transparent);
   text-decoration: line-through;
 }
 
 .month-day-tasks em {
-  color: rgba(42, 36, 28, 0.42);
+  color: color-mix(in srgb, var(--app-ink) 42%, transparent);
   font-size: 11px;
   font-style: normal;
 }
@@ -987,9 +1080,9 @@ textarea:focus {
   min-height: 62px;
   padding: 10px 0;
   border: 0;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   background: transparent;
-  color: #2b261f;
+  color: var(--app-ink);
   text-align: left;
 }
 
@@ -1024,10 +1117,10 @@ textarea:focus {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 50%;
   background: transparent;
-  color: rgba(42, 36, 28, 0.62);
+  color: color-mix(in srgb, var(--app-ink) 62%, transparent);
 }
 
 .plan-actions button:hover {
@@ -1045,14 +1138,14 @@ textarea:focus {
   border: 1px solid transparent;
   border-radius: 50%;
   background: transparent;
-  color: rgba(42, 36, 28, 0.38);
+  color: color-mix(in srgb, var(--app-ink) 38%, transparent);
   transition: background 150ms, border-color 150ms, color 150ms, transform 150ms;
 }
 
 .plan-delete:hover {
-  border-color: rgba(170, 76, 64, 0.28);
-  background: rgba(170, 76, 64, 0.08);
-  color: #9b463d;
+  border-color: color-mix(in srgb, var(--app-weak) 28%, transparent);
+  background: color-mix(in srgb, var(--app-weak) 8%, transparent);
+  color: var(--app-weak);
   transform: scale(1.04);
 }
 
@@ -1093,7 +1186,7 @@ textarea:focus {
   width: 100%;
   height: 38px;
   padding: 0 10px;
-  border: 1px solid rgba(46, 40, 31, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, var(--app-surface) 78%, transparent);
   color: var(--app-ink);
@@ -1124,10 +1217,10 @@ textarea:focus {
   display: grid;
   gap: 2px;
   padding: 6px;
-  border: 1px solid rgba(46, 40, 31, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 5px;
   background: var(--app-surface);
-  box-shadow: 0 16px 36px rgba(42, 36, 28, 0.14);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--app-ink) 14%, transparent);
 }
 
 .select-menu button {
@@ -1159,10 +1252,10 @@ textarea:focus {
   display: grid;
   gap: 2px;
   padding: 6px;
-  border: 1px solid rgba(46, 40, 31, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 5px;
   background: var(--app-surface);
-  box-shadow: 0 16px 36px rgba(42, 36, 28, 0.14);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--app-ink) 14%, transparent);
 }
 
 .review-template-menu button {
@@ -1215,7 +1308,7 @@ textarea:focus {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: rgba(42, 36, 28, 0.52);
+  color: color-mix(in srgb, var(--app-ink) 52%, transparent);
 }
 
 .swatch {
@@ -1253,13 +1346,13 @@ textarea:focus {
 .section-heading {
   min-height: 58px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
 }
 
 .section-heading > p,
 .section-heading > span {
   margin: 0;
-  color: rgba(42, 36, 28, 0.52);
+  color: color-mix(in srgb, var(--app-ink) 52%, transparent);
   font-size: 13px;
 }
 
@@ -1275,7 +1368,7 @@ textarea:focus {
   padding-bottom: 34px;
   scroll-padding-bottom: 34px;
   scrollbar-width: thin;
-  scrollbar-color: var(--app-accent) rgba(42, 36, 28, 0.08);
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .date-row {
@@ -1284,7 +1377,7 @@ textarea:focus {
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 18px;
   padding: 20px 0;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .date-row.today,
@@ -1305,7 +1398,7 @@ textarea:focus {
 
 .date-marker {
   align-self: start;
-  color: rgba(42, 36, 28, 0.62);
+  color: color-mix(in srgb, var(--app-ink) 62%, transparent);
 }
 
 .date-marker span,
@@ -1317,7 +1410,7 @@ textarea:focus {
 .date-marker strong {
   display: block;
   margin: 5px 0;
-  color: #2b261f;
+  color: var(--app-ink);
   font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
   font-size: 20px;
   font-weight: 500;
@@ -1353,7 +1446,7 @@ textarea:focus {
 }
 
 .date-row.focused::before {
-  background: linear-gradient(90deg, rgba(82, 123, 141, 0.16), transparent 62%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--app-accent) 16%, transparent), transparent 62%);
 }
 
 .entry-column {
@@ -1371,10 +1464,10 @@ textarea:focus {
   width: 100%;
   min-height: 44px;
   padding: 7px 8px;
-  border: 1px solid rgba(42, 36, 28, 0.12);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   border-radius: 5px;
-  background: rgba(255, 253, 248, 0.48);
-  color: #2b261f;
+  background: color-mix(in srgb, var(--app-surface) 48%, transparent);
+  color: var(--app-ink);
   text-align: left;
   transition:
     background 160ms ease,
@@ -1392,12 +1485,12 @@ textarea:focus {
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--accent-soft) 82%, white),
-    rgba(255, 253, 248, 0.56)
+    color-mix(in srgb, var(--app-surface) 56%, transparent)
   );
 }
 
 .schedule-entry.completed .entry-title {
-  color: rgba(42, 36, 28, 0.5);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
   text-decoration: line-through;
 }
 
@@ -1414,7 +1507,7 @@ textarea:focus {
 
 .entry-kind.new {
   background: var(--accent);
-  color: #fffaf1;
+  color: var(--app-surface);
 }
 
 .entry-kind.review {
@@ -1440,7 +1533,7 @@ textarea:focus {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(42, 36, 28, 0.18);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 18%, transparent);
   border-radius: 50%;
   color: transparent;
   transition:
@@ -1458,7 +1551,7 @@ textarea:focus {
 .completed .entry-check {
   border-color: var(--accent-strong);
   background: var(--accent-strong);
-  color: #fffaf1;
+  color: var(--app-surface);
   animation: check-pop 220ms ease;
 }
 
@@ -1480,14 +1573,14 @@ textarea:focus {
   justify-content: center;
   width: 36px;
   height: 38px;
-  border: 1px solid rgba(42, 36, 28, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 4px;
   background: transparent;
   color: var(--accent-strong);
 }
 
 .knowledge-panel {
-  border-left: 1px solid rgba(42, 36, 28, 0.1);
+  border-left: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
   padding-left: 24px;
 }
 
@@ -1499,10 +1592,10 @@ textarea:focus {
   height: 40px;
   margin: 14px 0;
   padding: 0 10px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 4px;
-  background: rgba(255, 253, 248, 0.58);
-  color: rgba(42, 36, 28, 0.5);
+  background: color-mix(in srgb, var(--app-surface) 58%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
 }
 
 .search-box input {
@@ -1519,7 +1612,7 @@ textarea:focus {
 
 .knowledge-item {
   padding: 12px 0;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
   transition:
     background 160ms ease,
     padding-left 160ms ease;
@@ -1531,7 +1624,7 @@ textarea:focus {
 
 .knowledge-summary-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -1545,8 +1638,32 @@ textarea:focus {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2b261f;
+  color: var(--app-ink);
   text-align: left;
+}
+
+.knowledge-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.knowledge-open:hover {
+  border-color: color-mix(in srgb, var(--app-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--app-accent-soft) 60%, transparent);
+  color: var(--app-accent-strong);
+  transform: translateX(2px);
 }
 
 .knowledge-delete {
@@ -1558,7 +1675,7 @@ textarea:focus {
   border: 1px solid transparent;
   border-radius: 50%;
   background: transparent;
-  color: rgba(42, 36, 28, 0.38);
+  color: color-mix(in srgb, var(--app-ink) 38%, transparent);
   transition:
     background 150ms ease,
     border-color 150ms ease,
@@ -1567,9 +1684,9 @@ textarea:focus {
 }
 
 .knowledge-delete:hover {
-  border-color: rgba(170, 76, 64, 0.28);
-  background: rgba(170, 76, 64, 0.08);
-  color: #9b463d;
+  border-color: color-mix(in srgb, var(--app-weak) 28%, transparent);
+  background: color-mix(in srgb, var(--app-weak) 8%, transparent);
+  color: var(--app-weak);
   transform: scale(1.04);
 }
 
@@ -1583,12 +1700,12 @@ textarea:focus {
 .knowledge-summary small {
   display: block;
   margin-top: 4px;
-  color: rgba(42, 36, 28, 0.5);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
   font-size: 12px;
 }
 
 .knowledge-summary small + small {
-  color: rgba(42, 36, 28, 0.42);
+  color: color-mix(in srgb, var(--app-ink) 42%, transparent);
   font-size: 11px;
 }
 
@@ -1612,8 +1729,8 @@ textarea:focus {
   min-height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(42, 36, 28, 0.055);
-  color: rgba(42, 36, 28, 0.56);
+  background: color-mix(in srgb, var(--app-ink) 5.5%, transparent);
+  color: color-mix(in srgb, var(--app-ink) 56%, transparent);
   font-size: 11px;
   font-style: normal;
   font-weight: 650;
@@ -1631,7 +1748,7 @@ textarea:focus {
 .progress-meter {
   display: block;
   overflow: hidden;
-  background: rgba(42, 36, 28, 0.1);
+  background: color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .progress-track {
@@ -1691,7 +1808,7 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 16px;
-  color: rgba(42, 36, 28, 0.48);
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
   font-size: 12px;
 }
 
@@ -1704,7 +1821,7 @@ textarea:focus {
 
 .tag-editor > span {
   padding-top: 7px;
-  color: rgba(42, 36, 28, 0.5);
+  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
   font-size: 12px;
 }
 
@@ -1753,7 +1870,7 @@ textarea:focus {
 }
 
 .tag-chip button:hover {
-  background: rgba(42, 36, 28, 0.1);
+  background: color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .tag-add-row {
@@ -1763,15 +1880,131 @@ textarea:focus {
 }
 
 .tag-add-row button {
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 4px;
-  background: rgba(255, 253, 248, 0.58);
+  background: color-mix(in srgb, var(--app-surface) 58%, transparent);
   color: var(--app-accent-strong);
   font-weight: 650;
 }
 
 .markdown-editor {
+  position: relative;
   display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0;
+}
+
+.markdown-editor-loading {
+  min-height: 260px;
+}
+
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--app-line) 86%, transparent);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--app-surface) 72%, transparent);
+}
+
+.markdown-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.markdown-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: color-mix(in srgb, var(--app-ink) 10%, transparent);
+}
+
+.markdown-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: color-mix(in srgb, var(--app-ink) 62%, transparent);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.markdown-toolbar-button:hover {
+  background: color-mix(in srgb, var(--app-accent-soft) 60%, transparent);
+  color: var(--app-accent-strong);
+}
+
+.markdown-toolbar-button.active {
+  background: color-mix(in srgb, var(--app-accent-soft) 82%, transparent);
+  color: var(--app-accent-strong);
+  border-color: color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
+
+.markdown-toolbar-text-button {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.markdown-heading-select {
+  height: 26px;
+  width: 88px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: color-mix(in srgb, var(--app-ink) 76%, transparent);
+  font-size: 12px;
+}
+
+.markdown-heading-select:focus {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent-soft) 70%, transparent);
+}
+
+.markdown-bubble-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--app-line) 88%, transparent);
+  border-radius: 6px;
+  background: var(--app-surface);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--app-ink) 16%, transparent);
+}
+
+.markdown-bubble-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: color-mix(in srgb, var(--app-ink) 66%, transparent);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.markdown-bubble-button:hover {
+  background: color-mix(in srgb, var(--app-accent-soft) 62%, transparent);
+  color: var(--app-accent-strong);
+}
+
+.markdown-bubble-button.active {
+  background: color-mix(in srgb, var(--app-accent-soft) 82%, transparent);
+  color: var(--app-accent-strong);
 }
 
 .markdown-editor-footer {
@@ -1783,17 +2016,17 @@ textarea:focus {
 }
 
 .markdown-dirty-hint {
-  color: rgba(42, 36, 28, 0.4);
+  color: color-mix(in srgb, var(--app-ink) 40%, transparent);
   font-size: 11px;
 }
 
 .markdown-save-button {
   height: 30px;
   padding: 0 14px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 4px;
   background: transparent;
-  color: rgba(42, 36, 28, 0.42);
+  color: color-mix(in srgb, var(--app-ink) 42%, transparent);
   font-size: 12px;
   font-weight: 650;
   cursor: default;
@@ -1809,22 +2042,87 @@ textarea:focus {
 
 .markdown-save-button.dirty:hover {
   background: var(--app-accent);
-  color: #fffaf1;
+  color: var(--app-surface);
+}
+
+.markdown-link-dialog {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--app-ink) 18%, transparent);
+}
+
+.markdown-link-dialog-inner {
+  display: grid;
+  gap: 12px;
+  width: min(420px, calc(100vw - 64px));
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--app-line) 86%, transparent);
+  border-radius: 6px;
+  background: var(--app-surface);
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--app-ink) 20%, transparent);
+}
+
+.markdown-link-dialog-inner label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--app-ink) 64%, transparent);
+}
+
+.markdown-link-dialog-inner input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--app-surface) 82%, transparent);
+  color: var(--app-ink);
+  font-size: 13px;
+}
+
+.markdown-link-dialog-inner input:focus {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent-soft) 66%, transparent);
+}
+
+.markdown-link-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.markdown-link-dialog-actions > div {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.markdown-image {
+  max-width: 100%;
+  height: auto;
+  margin: 6px 0;
+  border-radius: 4px;
 }
 
 .markdown-surface {
   min-height: 220px;
+  max-height: 60vh;
+  overflow-y: auto;
   padding: 16px 18px;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--app-line) 86%, transparent);
   border-left: 3px solid var(--app-accent);
-  border-radius: 0;
+  border-radius: 0 0 4px 4px;
   box-shadow: none;
   line-height: 1.75;
   font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
   font-size: 15px;
   background:
-    linear-gradient(rgba(84, 73, 58, 0.035) 1px, transparent 1px),
-    rgba(255, 253, 248, 0.46);
+    linear-gradient(color-mix(in srgb, var(--app-ink) 3.5%, transparent) 1px, transparent 1px),
+    color-mix(in srgb, var(--app-surface) 46%, transparent);
   background-size: 100% 28px;
   user-select: text;
 }
@@ -1858,7 +2156,7 @@ textarea:focus {
 .markdown-prosemirror h5,
 .markdown-prosemirror h6 {
   margin: 8px 0 10px;
-  color: #2b261f;
+  color: var(--app-ink);
   font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
   font-weight: 500;
   line-height: 1.2;
@@ -1899,11 +2197,11 @@ textarea:focus {
 }
 
 .markdown-prosemirror li::marker {
-  color: var(--accent-strong);
+  color: var(--app-accent-strong);
 }
 
 .markdown-prosemirror a {
-  color: var(--accent-strong);
+  color: var(--app-accent-strong);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -1912,17 +2210,17 @@ textarea:focus {
 .markdown-prosemirror blockquote {
   margin: 4px 0;
   padding: 2px 0 2px 14px;
-  border-left: 3px solid var(--accent);
-  color: rgba(42, 36, 28, 0.72);
+  border-left: 3px solid var(--app-accent);
+  color: color-mix(in srgb, var(--app-ink) 72%, transparent);
 }
 
 .markdown-prosemirror pre {
   margin: 8px 0;
   padding: 10px 12px;
   overflow-x: auto;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--app-line) 86%, transparent);
   border-radius: 4px;
-  background: rgba(42, 36, 28, 0.055);
+  background: color-mix(in srgb, var(--app-ink) 5.5%, transparent);
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
   line-height: 1.55;
@@ -1931,7 +2229,7 @@ textarea:focus {
 .markdown-prosemirror code {
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--app-accent-soft) 72%, transparent);
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 0.88em;
 }
@@ -1946,7 +2244,7 @@ textarea:focus {
   height: 1px;
   margin: 14px 0;
   border: 0;
-  background: var(--line);
+  background: color-mix(in srgb, var(--app-line) 86%, transparent);
 }
 
 .markdown-prosemirror table {
@@ -1956,24 +2254,30 @@ textarea:focus {
   table-layout: fixed;
   font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
   font-size: 14px;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 24%, transparent);
 }
 
 .markdown-prosemirror th,
 .markdown-prosemirror td {
   min-width: 80px;
-  padding: 5px 8px;
-  border: 1px solid var(--line);
+  min-height: 28px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 22%, transparent);
   vertical-align: top;
 }
 
 .markdown-prosemirror th {
-  background: rgba(42, 36, 28, 0.045);
-  color: #2b261f;
+  background: color-mix(in srgb, var(--app-accent-soft) 68%, transparent);
+  color: var(--app-ink);
   font-weight: 600;
 }
 
+.markdown-prosemirror li[data-type="taskItem"] input {
+  accent-color: var(--app-accent);
+}
+
 .markdown-prosemirror s {
-  color: rgba(42, 36, 28, 0.58);
+  color: color-mix(in srgb, var(--app-ink) 58%, transparent);
 }
 
 .markdown-prosemirror ul[data-type="taskList"] {
@@ -2002,7 +2306,7 @@ textarea:focus {
   content: attr(data-placeholder);
   float: left;
   height: 0;
-  color: rgba(42, 36, 28, 0.38);
+  color: color-mix(in srgb, var(--app-ink) 38%, transparent);
   pointer-events: none;
 }
 
@@ -2073,13 +2377,13 @@ textarea:focus {
   padding-bottom: 34px;
   scroll-padding-bottom: 34px;
   scrollbar-width: thin;
-  scrollbar-color: var(--app-accent) rgba(42, 36, 28, 0.08);
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .notebook-plan-group {
   position: relative;
   padding-bottom: 22px;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
   scroll-margin-top: 8px;
   transition:
     background 180ms ease,
@@ -2121,7 +2425,7 @@ textarea:focus {
 .notebook-plan-heading button {
   height: 30px;
   padding: 0 10px;
-  border: 1px solid rgba(42, 36, 28, 0.14);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 14%, transparent);
   border-radius: 4px;
   background: transparent;
   color: var(--app-accent-strong);
@@ -2136,7 +2440,7 @@ textarea:focus {
 .grouped-knowledge-panel .section-heading h2 {
   font-family: inherit;
   font-size: 13px;
-  color: rgba(42, 36, 28, 0.56);
+  color: color-mix(in srgb, var(--app-ink) 56%, transparent);
 }
 
 .grouped-knowledge-panel .knowledge-list {
@@ -2151,7 +2455,7 @@ textarea:focus {
   align-content: start;
   gap: 8px;
   padding-left: 20px;
-  border-left: 1px solid rgba(42, 36, 28, 0.1);
+  border-left: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .notebook-plan-index button,
@@ -2186,13 +2490,13 @@ textarea:focus {
 
 .notebook-plan-index button small,
 .notebook-tag-index button small {
-  color: rgba(42, 36, 28, 0.46);
+  color: color-mix(in srgb, var(--app-ink) 46%, transparent);
 }
 
 .notebook-tag-index .notebook-export-button {
   margin-top: 10px;
-  border: 1px solid color-mix(in srgb, var(--app-accent) 34%, rgba(42, 36, 28, 0.12));
-  background: color-mix(in srgb, var(--app-accent-soft) 48%, rgba(255, 253, 248, 0.7));
+  border: 1px solid color-mix(in srgb, var(--app-accent) 34%, color-mix(in srgb, var(--app-ink) 12%, transparent));
+  background: color-mix(in srgb, var(--app-accent-soft) 48%, color-mix(in srgb, var(--app-surface) 70%, transparent));
   color: var(--app-accent-strong);
 }
 
@@ -2220,7 +2524,7 @@ textarea:focus {
   gap: 8px;
   padding-bottom: 18px;
   margin-bottom: 8px;
-  border-bottom: 1px solid rgba(42, 36, 28, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
 }
 
 .weak-progress-list {
@@ -2238,7 +2542,7 @@ textarea:focus {
   padding: 7px 0;
   border: 0;
   background: transparent;
-  color: #2b261f;
+  color: var(--app-ink);
   text-align: left;
 }
 
@@ -2252,7 +2556,7 @@ textarea:focus {
 
 .weak-progress-row small {
   margin-top: 3px;
-  color: rgba(42, 36, 28, 0.48);
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
 }
 
 .weak-progress-row em {
@@ -2349,7 +2653,7 @@ textarea:focus {
   justify-content: center;
   width: min(260px, 100%);
   height: 38px;
-  border: 1px solid rgba(46, 40, 31, 0.16);
+  border: 1px solid color-mix(in srgb, var(--app-ink) 16%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, var(--app-surface) 78%, transparent);
   color: color-mix(in srgb, var(--app-muted) 78%, var(--app-ink));
@@ -2612,7 +2916,7 @@ textarea:focus {
   border-radius: 6px;
   background: var(--app-surface);
   color: var(--app-ink);
-  box-shadow: 0 24px 70px rgba(42, 36, 28, 0.18);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--app-ink) 18%, transparent);
 }
 
 .theme-modal header,
@@ -2744,7 +3048,7 @@ textarea:focus {
 .placeholder,
 .quiet-line {
   margin: 0;
-  color: rgba(42, 36, 28, 0.46);
+  color: color-mix(in srgb, var(--app-ink) 46%, transparent);
   font-style: italic;
 }
 

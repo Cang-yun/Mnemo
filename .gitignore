@@ -2,14 +2,23 @@ node_modules/
 dist/
 dist-electron/
 release/
+coverage/
 *.log
 *.7z
-*.env
-*.env.local
+.env
+.env.*
 *.tsbuildinfo
+*.tmp
 Thumbs.db
+.DS_Store
 CODEBUDDY.md
 .npm-cache/
 .claude/
 .tools/
 .vite/
+.idea/
+.vscode/
+.eslintcache
+
+# Internal notes / design docs not meant for distribution
+REVIEW.md

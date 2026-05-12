@@ -38,6 +38,11 @@ export function MonthPage({
 
   function moveMonth(offset: number) {
     const date = parseIsoDate(anchorDate);
+    // Normalize to the 1st first to avoid month-end overflow (e.g. Mar 31 + 1
+    // month would otherwise become May 1 instead of April). We intentionally
+    // do not try to preserve the day-of-month; the calendar shows a full grid
+    // for the anchor month so the day number doesn't matter for navigation.
+    date.setDate(1);
     date.setMonth(date.getMonth() + offset);
     setAnchorDate(toIsoDate(date));
   }
@@ -83,7 +88,12 @@ export function MonthPage({
         ))}
         {dates.map((date) => {
           const dateEntries = scheduleEntries.filter((entry) => {
-            if (entry.date !== date) return false;
+            // In the calendar we want each entry to show on its originally
+            // scheduled day, not on the "carried to today" display date that
+            // TodayOverview uses. Fall back to entry.date for completed or
+            // on-time entries.
+            const bucketDate = entry.originalDate ?? entry.date;
+            if (bucketDate !== date) return false;
             if (filter === "all") return true;
             return planById.get(entry.planId)?.kind === filter;
           });
@@ -113,10 +123,16 @@ export function MonthPage({
                   const plan = planById.get(entry.planId);
                   if (!item || !plan) return null;
                   const theme = getPlanTheme(plan.themeId);
+                  const overdue =
+                    !entry.completed && Boolean(entry.originalDate) && entry.originalDate !== today;
 
                   return (
                     <div
-                      className={entry.completed ? "month-task completed" : "month-task"}
+                      className={[
+                        "month-task",
+                        entry.completed ? "completed" : "",
+                        overdue ? "overdue" : "",
+                      ].join(" ").trim()}
                       key={entry.id}
                       style={
                         {
@@ -130,16 +146,24 @@ export function MonthPage({
                         disabled={entry.date !== today}
                         onClick={() => onToggleEntry(entry.id)}
                         aria-label={entry.completed ? "标记未完成" : "标记完成"}
+                        title={
+                          overdue
+                            ? `已顺延到 ${formatChineseDate(entry.date)}，请到今日任务处理`
+                            : undefined
+                        }
                       >
                         <Check size={12} />
                       </button>
                       <button
                         className="month-task-title"
-                        onClick={() => onOpenPlan(plan.id, date)}
-                        title={`${formatChineseDate(date)} · ${plan.name} · ${item.title}`}
+                        onClick={() => onOpenPlan(plan.id, entry.date)}
+                        title={`${formatChineseDate(date)} · ${plan.name} · ${item.title}${
+                          overdue ? ` · 已顺延到 ${formatChineseDate(entry.date)}` : ""
+                        }`}
                       >
                         <span>{entryKindLabel(entry, plan)}</span>
                         {item.title}
+                        {overdue ? <em className="month-task-overdue-mark">逾期</em> : null}
                       </button>
                     </div>
                   );

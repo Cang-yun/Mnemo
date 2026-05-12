@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppData,
   CreatePlanInput,
@@ -25,12 +25,36 @@ import {
   updateKnowledgeTagsInData,
   updatePlanInData,
 } from "./appMutations";
-import { LocalStorageAdapter } from "./localStorageAdapter";
-import { migrateAppData } from "./storageAdapter";
+import { FileStorageAdapter } from "./fileStorageAdapter";
+import { createEmptyAppData, migrateAppData } from "./storageAdapter";
 
 export function useAppStore() {
-  const storage = useMemo(() => new LocalStorageAdapter(), []);
-  const [data, setData] = useState<AppData>(() => storage.load());
+  const storage = useMemo(() => new FileStorageAdapter(), []);
+  const [data, setData] = useState<AppData>(() => createEmptyAppData());
+  const [loaded, setLoaded] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Persistence is asynchronous (IPC to the main process writes
+  // state.json). We serialize saves through a promise chain so that a later
+  // mutation never races ahead of an earlier one and overwrites fresher data.
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Mirror the latest state in a ref so the close-confirm path can perform a
+  // synchronous final flush without reading stale React state.
+  const latestDataRef = useRef<AppData>(data);
+  latestDataRef.current = data;
+
+  useEffect(() => {
+    let cancelled = false;
+    void storage.load().then((loadedData) => {
+      if (cancelled) return;
+      setData(loadedData);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
+
   const derivedScheduleEntries = useMemo(
     () => deriveScheduleEntries(data.plans, data.knowledgeItems, data.scheduleEntries),
     [data.plans, data.knowledgeItems, data.scheduleEntries],
@@ -40,12 +64,45 @@ export function useAppStore() {
     [data, derivedScheduleEntries],
   );
 
-  useEffect(() => {
-    storage.save(data);
-  }, [data, storage]);
+  function scheduleSave(next: AppData) {
+    saveChainRef.current = saveChainRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await storage.save(next);
+          setSaveError((previous) => (previous ? null : previous));
+        } catch (error) {
+          const message = describeSaveError(error);
+          console.error("Failed to persist state:", error);
+          setSaveError(message);
+        }
+      });
+  }
 
   function updateData(updater: (current: AppData) => AppData) {
-    setData((current) => updater(current));
+    // Don't let mutations commit before the initial load has populated state,
+    // otherwise we would overwrite user data with an empty dataset.
+    if (!loaded) return;
+    setData((current) => {
+      const next = updater(current);
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  function clearSaveError() {
+    setSaveError(null);
+  }
+
+  /**
+   * Synchronously flush the latest state to disk. Intended for the close-
+   * confirm path: the main process is about to destroy the window, so any
+   * pending async save would be aborted. Returns true if the sync write
+   * succeeded (or if there is nothing to flush).
+   */
+  function flushPendingSavesSync(): boolean {
+    if (!loaded) return true;
+    return storage.saveSync(latestDataRef.current);
   }
 
   function createPlan(input: CreatePlanInput) {
@@ -127,7 +184,9 @@ export function useAppStore() {
   }
 
   function replaceData(rawData: unknown) {
-    setData(migrateAppData(rawData));
+    const next = migrateAppData(rawData);
+    setData(next);
+    scheduleSave(next);
   }
 
   function addKnowledge(planId: string, date: string, title: string) {
@@ -225,25 +284,16 @@ export function useAppStore() {
   }
 
   function deletePlan(planId: string) {
-    updateData((current) => {
-      const planKnowledgeIds = new Set(
-        current.knowledgeItems
-          .filter((item) => item.planId === planId)
-          .map((item) => item.id),
-      );
-      return {
-        ...current,
-        plans: current.plans.filter((plan) => plan.id !== planId),
-        knowledgeItems: current.knowledgeItems.filter((item) => item.planId !== planId),
-        scheduleEntries: current.scheduleEntries.filter(
-          (entry) => entry.planId !== planId,
-        ),
-        activePlanId:
-          current.activePlanId === planId
-            ? (current.plans.find((plan) => plan.id !== planId)?.id ?? null)
-            : current.activePlanId,
-      };
-    });
+    updateData((current) => ({
+      ...current,
+      plans: current.plans.filter((plan) => plan.id !== planId),
+      knowledgeItems: current.knowledgeItems.filter((item) => item.planId !== planId),
+      scheduleEntries: current.scheduleEntries.filter((entry) => entry.planId !== planId),
+      activePlanId:
+        current.activePlanId === planId
+          ? (current.plans.find((plan) => plan.id !== planId)?.id ?? null)
+          : current.activePlanId,
+    }));
   }
 
   const activePlan = data.plans.find((plan) => plan.id === data.activePlanId) ?? data.plans[0] ?? null;
@@ -257,9 +307,13 @@ export function useAppStore() {
   return {
     data: visibleData,
     rawData: data,
+    loaded,
     activePlan,
     activePlanItems,
     activePlanEntries,
+    saveError,
+    clearSaveError,
+    flushPendingSavesSync,
     createPlan,
     updatePlan,
     setActivePlan,
@@ -281,4 +335,20 @@ export function useAppStore() {
     deleteKnowledge,
     deletePlan,
   };
+}
+
+function describeSaveError(error: unknown): string {
+  const name = (error as { name?: string } | null)?.name ?? "";
+  const message = (error as { message?: string } | null)?.message ?? "";
+  const haystack = `${name} ${message}`;
+  if (/ENOSPC/i.test(haystack)) {
+    return "磁盘空间不足，最近的更改未能写入 state.json。请清理磁盘后再试；在此之前请先在设置里导出一份备份。";
+  }
+  if (/EACCES|EPERM/i.test(haystack)) {
+    return "没有写入数据文件的权限。请检查用户目录 state.json 是否被其他程序占用，或换一个可写路径。";
+  }
+  if (/quota/i.test(haystack)) {
+    return "浏览器存储配额已满。请切换到桌面版使用，或在设置里导出备份后清理数据。";
+  }
+  return "保存失败，最近的更改尚未落盘。请尽快在设置里导出一份备份，避免数据丢失。";
 }

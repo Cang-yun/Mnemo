@@ -2,8 +2,10 @@ import { Download, HelpCircle, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { KnowledgeItem, Plan, ScheduleEntry } from "../domain/types";
 import {
+  collectExportImageNames,
   createNotebookExportFileName,
   createNotebookExportMarkdown,
+  deriveAssetsDirName,
 } from "../utils/notebookExport";
 import { KnowledgePanel } from "./KnowledgePanel";
 
@@ -11,6 +13,7 @@ interface NotebookPageProps {
   plans: Plan[];
   knowledgeItems: KnowledgeItem[];
   scheduleEntries: ScheduleEntry[];
+  focusKnowledgeId?: string | null;
   onOpenPlan(planId: string): void;
   onUpdateNote(knowledgeId: string, noteMarkdown: string): void;
   onUpdateTitle(knowledgeId: string, title: string): void;
@@ -28,6 +31,7 @@ export function NotebookPage({
   plans,
   knowledgeItems,
   scheduleEntries,
+  focusKnowledgeId = null,
   onOpenPlan,
   onUpdateNote,
   onUpdateTitle,
@@ -119,14 +123,22 @@ export function NotebookPage({
       return;
     }
 
+    const defaultFileName = createNotebookExportFileName(exportLabel);
+    const assetsDirName = deriveAssetsDirName(defaultFileName);
+    const imageNames = collectExportImageNames(exportItems);
+    const hasDesktopApi = Boolean(window.ebbinghausDesktop?.exportMarkdown);
+    const rewriteLinks = hasDesktopApi && imageNames.length > 0;
     const content = createNotebookExportMarkdown({
       items: exportItems,
       plans,
       title: `${exportLabel} - Mnemo 笔记`,
+      assetsDirName: rewriteLinks ? assetsDirName : undefined,
     });
-    const defaultFileName = createNotebookExportFileName(exportLabel);
 
-    if (!window.ebbinghausDesktop?.exportMarkdown) {
+    if (!hasDesktopApi) {
+      // Browser fallback: no file system access, so we emit a single Markdown
+      // file with original mnemo-image:// URLs that won't resolve outside the
+      // app. That's acceptable for this fallback path.
       const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -138,14 +150,32 @@ export function NotebookPage({
       return;
     }
 
+    let images: Record<string, string> | undefined;
+    if (rewriteLinks && window.ebbinghausDesktop?.readImages) {
+      try {
+        images = await window.ebbinghausDesktop.readImages(imageNames);
+      } catch (error) {
+        console.warn("Failed to read images for export:", error);
+      }
+    }
+
     try {
-      const result = await window.ebbinghausDesktop.exportMarkdown({ defaultFileName, content });
+      const result = await window.ebbinghausDesktop!.exportMarkdown({
+        defaultFileName,
+        content,
+        images,
+      });
       if (result.canceled) {
         setExportMessage("已取消导出。");
         return;
       }
 
-      setExportMessage(`已导出 ${exportItems.length} 条知识点/事项。`);
+      const assetsWritten = "assetsWritten" in result ? result.assetsWritten ?? 0 : 0;
+      setExportMessage(
+        assetsWritten > 0
+          ? `已导出 ${exportItems.length} 条，图片 ${assetsWritten} 张保存到 ${assetsDirName}/。`
+          : `已导出 ${exportItems.length} 条知识点/事项。`,
+      );
     } catch {
       setExportMessage("导出失败，请检查目标路径权限后重试。");
     }
@@ -234,6 +264,11 @@ export function NotebookPage({
                     emptyText={`这个计划还没有${plan?.kind === "task" ? "事项" : "知识点"}。`}
                     knowledgeItems={group.items}
                     scheduleEntries={scheduleEntries}
+                    focusKnowledgeId={
+                      focusKnowledgeId && group.items.some((item) => item.id === focusKnowledgeId)
+                        ? focusKnowledgeId
+                        : null
+                    }
                     onUpdateNote={onUpdateNote}
                     onUpdateTitle={onUpdateTitle}
                     onUpdateTags={onUpdateTags}

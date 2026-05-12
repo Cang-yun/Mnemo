@@ -1,9 +1,10 @@
-import { ChevronDown, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ExternalLink, Search, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getKnowledgeFeedbackStats } from "../domain/feedbackStats";
 import { getKnowledgeProgress } from "../domain/schedule";
 import type { KnowledgeItem, PlanKind, ScheduleEntry } from "../domain/types";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { useUnsavedGuard } from "./useUnsavedGuard";
 
 interface KnowledgePanelProps {
   knowledgeItems: KnowledgeItem[];
@@ -13,10 +14,12 @@ interface KnowledgePanelProps {
   showSearch?: boolean;
   emptyText?: string;
   className?: string;
+  focusKnowledgeId?: string | null;
   onUpdateNote(knowledgeId: string, noteMarkdown: string): void;
   onUpdateTitle(knowledgeId: string, title: string): void;
   onUpdateTags(knowledgeId: string, tags: string[]): void;
   onDeleteKnowledge(knowledgeId: string): void;
+  onOpenNote?(knowledgeId: string): void;
 }
 
 interface KnowledgeTitleEditorProps {
@@ -178,15 +181,45 @@ export function KnowledgePanel({
   showSearch = true,
   emptyText = "没有匹配的知识点。",
   className = "",
+  focusKnowledgeId = null,
   onUpdateNote,
   onUpdateTitle,
   onUpdateTags,
   onDeleteKnowledge,
+  onOpenNote,
 }: KnowledgePanelProps) {
   const [query, setQuery] = useState("");
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
   const [deletingItem, setDeletingItem] = useState<KnowledgeItem | null>(null);
   const itemLabel = planKind === "task" ? "事项" : "知识点";
+  const rowRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const guard = useUnsavedGuard();
+
+  useEffect(() => {
+    if (!focusKnowledgeId) return;
+    if (!knowledgeItems.some((item) => item.id === focusKnowledgeId)) return;
+    if (openId === focusKnowledgeId) {
+      const existing = rowRefs.current.get(focusKnowledgeId);
+      if (existing) {
+        window.requestAnimationFrame(() => {
+          existing.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+      }
+      return;
+    }
+
+    void guard.runGuarded(() => {
+      setOpenId(focusKnowledgeId);
+    }).then((ok) => {
+      if (!ok) return;
+      const element = rowRefs.current.get(focusKnowledgeId);
+      if (element) {
+        window.requestAnimationFrame(() => {
+          element.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+      }
+    });
+  }, [focusKnowledgeId, knowledgeItems, guard, openId]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -200,27 +233,22 @@ export function KnowledgePanel({
   }, [knowledgeItems, query]);
 
   function toggleOpen(itemId: string) {
-    setOpenIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
+    void guard.runGuarded(() => {
+      setOpenId((current) => (current === itemId ? null : itemId));
     });
   }
 
   function deleteItem(item: KnowledgeItem) {
-    setDeletingItem(item);
+    void guard.runGuarded(() => {
+      setDeletingItem(item);
+    });
   }
 
   function confirmDeleteItem() {
     if (!deletingItem) return;
 
     onDeleteKnowledge(deletingItem.id);
-    setOpenIds((current) => {
-      const next = new Set(current);
-      next.delete(deletingItem.id);
-      return next;
-    });
+    setOpenId((current) => (current === deletingItem.id ? null : current));
     setDeletingItem(null);
   }
 
@@ -247,11 +275,18 @@ export function KnowledgePanel({
 
       <div className="knowledge-list">
         {filteredItems.map((item) => {
-          const open = openIds.has(item.id);
+          const open = openId === item.id;
           const progress = getKnowledgeProgress(item.id, scheduleEntries);
           const feedbackStats = getKnowledgeFeedbackStats(item.id, scheduleEntries);
           return (
-            <article className={open ? "knowledge-item open" : "knowledge-item"} key={item.id}>
+            <article
+              className={open ? "knowledge-item open" : "knowledge-item"}
+              key={item.id}
+              ref={(node) => {
+                if (node) rowRefs.current.set(item.id, node);
+                else rowRefs.current.delete(item.id);
+              }}
+            >
               <div className="knowledge-summary-row">
                 <button className="knowledge-summary" onClick={() => toggleOpen(item.id)}>
                   <span>
@@ -278,6 +313,16 @@ export function KnowledgePanel({
                   </span>
                   <ChevronDown size={16} />
                 </button>
+                {onOpenNote ? (
+                  <button
+                    className="knowledge-open"
+                    onClick={() => onOpenNote(item.id)}
+                    aria-label={`打开${itemLabel}详情`}
+                    title={`打开${itemLabel}详情`}
+                  >
+                    <ExternalLink size={15} />
+                  </button>
+                ) : null}
                 <button
                   className="knowledge-delete"
                   onClick={() => deleteItem(item)}
@@ -299,10 +344,14 @@ export function KnowledgePanel({
                     <span>最后修改：{formatKnowledgeDateTime(item.updatedAt)}</span>
                   </div>
                   <KnowledgeTagsEditor item={item} onUpdateTags={onUpdateTags} />
-                  <MarkdownEditor
-                    value={item.noteMarkdown}
-                    onChange={(value) => onUpdateNote(item.id, value)}
-                  />
+                  {open ? (
+                    <MarkdownEditor
+                      editorId={`note:${item.id}`}
+                      label={item.title}
+                      value={item.noteMarkdown}
+                      onChange={(value) => onUpdateNote(item.id, value)}
+                    />
+                  ) : null}
                 </div>
               </div>
             </article>
