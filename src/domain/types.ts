@@ -60,6 +60,8 @@ export interface AppData {
   startupView: StartupView;
   launchAtLogin: boolean;
   closeBehavior: CloseBehavior;
+  cloudSync?: CloudSyncConfig;
+  lastSyncTime?: string;
 }
 
 export interface CreatePlanInput {
@@ -110,4 +112,20 @@ export interface AppearanceTheme {
   accentStrong: string;
   accentSoft: string;
   weak: string;
+}
+
+export interface CloudSyncConfig {
+  url: string;
+  username: string;
+  password: string;
+}
+
+export interface CloudSyncDiff {
+  newPlans: string[];
+  deletedPlans: string[];
+  modifiedPlans: string[];
+  newKnowledge: string[];
+  deletedKnowledge: string[];
+  modifiedKnowledge: string[];
+  modifiedNotes: string[];
 }

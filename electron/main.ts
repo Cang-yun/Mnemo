@@ -762,6 +762,201 @@ ipcMain.handle(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Cloud sync — WebDAV (JianguoYun)
+// ---------------------------------------------------------------------------
+
+const CLOUD_PATH = "Mnemo";
+const WEBDAV_TIMEOUT = 15000;
+
+function webdavAuth(config: { username: string; password: string }) {
+  return "Basic " + Buffer.from(`${config.username}:${config.password}`).toString("base64");
+}
+
+function stripTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+async function webdavRequest(
+  config: { url: string; username: string; password: string },
+  path: string,
+  options: { method?: string; body?: string | Buffer; headers?: Record<string, string> } = {},
+) {
+  const base = stripTrailingSlash(config.url);
+  const fullUrl = `${base}/${CLOUD_PATH}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEBDAV_TIMEOUT);
+
+  try {
+    const response = await fetch(fullUrl, {
+      method: options.method ?? "GET",
+      headers: {
+        Authorization: webdavAuth(config),
+        ...(typeof options.body === "string" ? { "Content-Type": "application/json" } : {}),
+        ...options.headers,
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      body: options.body as any,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 409) return { status: 404 as const };
+      return { status: response.status as number, error: `${response.status} ${response.statusText}` };
+    }
+
+    return { status: response.status as number, response };
+  } catch (error) {
+    const name = (error as { name?: string }).name ?? "";
+    if (name === "AbortError") return { status: 0, error: "连接超时，请检查服务器地址和网络。" };
+    return { status: 0, error: `网络错误：${(error as Error).message}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Test connection: try to read the Mnemo directory
+ipcMain.handle(
+  "cloud:test-connection",
+  async (
+    _event,
+    config: { url: string; username: string; password: string },
+  ): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const base = stripTrailingSlash(config.url);
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), WEBDAV_TIMEOUT);
+      const response = await fetch(base, {
+        method: "PROPFIND",
+        headers: {
+          Authorization: webdavAuth(config),
+          Depth: "0",
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (response.ok) return { ok: true };
+      if (response.status === 401) return { ok: false, error: "认证失败，请检查用户名和应用密码。" };
+      return { ok: false, error: `服务器返回 ${response.status} ${response.statusText}` };
+    } catch (error) {
+      const name = (error as { name?: string }).name ?? "";
+      if (name === "AbortError") return { ok: false, error: "连接超时，请检查服务器地址和网络。" };
+      return { ok: false, error: `连接失败：${(error as Error).message}` };
+    }
+  },
+);
+
+// Fetch remote state.json
+ipcMain.handle(
+  "cloud:fetch-remote",
+  async (
+    _event,
+    config: { url: string; username: string; password: string },
+  ): Promise<
+    | { ok: true; data: unknown }
+    | { ok: false; error: string; notFound?: boolean }
+  > => {
+    const result = await webdavRequest(config, "/state.json");
+    if (result.status === 404) return { ok: false, error: "云端暂无备份数据。", notFound: true };
+    if (result.error) return { ok: false, error: result.error };
+    try {
+      const text = await result.response!.text();
+      return { ok: true, data: JSON.parse(text) };
+    } catch {
+      return { ok: false, error: "云端数据格式无效。" };
+    }
+  },
+);
+
+// Upload state.json + images
+ipcMain.handle(
+  "cloud:upload",
+  async (
+    _event,
+    payload: {
+      url: string;
+      username: string;
+      password: string;
+      content: string;
+      images?: Record<string, string>;
+    },
+  ): Promise<{ ok: true } | { ok: false; error: string }> => {
+    // Ensure Mnemo/ directory exists
+    await webdavRequest(payload, "/", { method: "MKCOL" }).catch(() => {});
+    // Ensure Mnemo/images/ directory exists
+    await webdavRequest(payload, "/images/", { method: "MKCOL" }).catch(() => {});
+
+    // Upload state.json
+    let result = await webdavRequest(payload, "/state.json", {
+      method: "PUT",
+      body: payload.content,
+    });
+    if (result.error) return { ok: false, error: `上传数据失败：${result.error}` };
+
+    // Upload images
+    if (payload.images) {
+      for (const [name, base64] of Object.entries(payload.images)) {
+        const safe = /^[0-9a-f]{16,64}\.[a-z0-9]{2,5}$/.test(name);
+        if (!safe || base64.length > 40 * 1024 * 1024) continue;
+        const buffer = Buffer.from(base64, "base64");
+        if (buffer.byteLength === 0 || buffer.byteLength > 20 * 1024 * 1024) continue;
+        result = await webdavRequest(payload, `/images/${name}`, {
+          method: "PUT",
+          body: buffer,
+          headers: { "Content-Type": "application/octet-stream" },
+        });
+        if (result.error) {
+          console.warn(`Failed to upload image ${name}: ${result.error}`);
+        }
+      }
+    }
+
+    return { ok: true };
+  },
+);
+
+// Restore state.json + images from cloud
+ipcMain.handle(
+  "cloud:restore",
+  async (
+    _event,
+    config: { url: string; username: string; password: string },
+  ): Promise<
+    | { ok: true; content: string; images: Record<string, string> }
+    | { ok: false; error: string }
+  > => {
+    // Fetch state.json
+    let result = await webdavRequest(config, "/state.json");
+    if (result.error) return { ok: false, error: `下载数据失败：${result.error}` };
+    const content = await result.response!.text();
+
+    // Fetch images
+    const images: Record<string, string> = {};
+    const listResult = await webdavRequest(config, "/images/", { method: "PROPFIND", headers: { Depth: "1" } });
+    if (listResult.response) {
+      try {
+        const listText = await listResult.response.text();
+        const names = Array.from(listText.matchAll(/<D:href>[^<]*\/images\/([^<]+)<\/D:href>/gi))
+          .map((m) => decodeURIComponent(m[1]))
+          .filter((n) => /^[0-9a-f]{16,64}\.[a-z0-9]{2,5}$/.test(n));
+
+        for (const name of names) {
+          const imgResult = await webdavRequest(config, `/images/${name}`);
+          if (imgResult.response) {
+            const buffer = await imgResult.response.arrayBuffer();
+            images[name] = Buffer.from(buffer).toString("base64");
+          }
+        }
+      } catch {
+        // Image listing is best-effort
+      }
+    }
+
+    return { ok: true, content, images };
+  },
+);
+
 app.whenReady().then(() => {
   registerImageProtocol();
   Menu.setApplicationMenu(null);

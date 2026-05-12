@@ -44,4 +44,12 @@ contextBridge.exposeInMainWorld("ebbinghausDesktop", {
   exportBackup: (payload: { defaultFileName: string; content: string }) =>
     ipcRenderer.invoke("data:export-backup", payload),
   importBackup: () => ipcRenderer.invoke("data:import-backup"),
+  cloudTestConnection: (config: { url: string; username: string; password: string }) =>
+    ipcRenderer.invoke("cloud:test-connection", config),
+  cloudFetchRemote: (config: { url: string; username: string; password: string }) =>
+    ipcRenderer.invoke("cloud:fetch-remote", config),
+  cloudUpload: (payload: { url: string; username: string; password: string; content: string; images?: Record<string, string> }) =>
+    ipcRenderer.invoke("cloud:upload", payload),
+  cloudRestore: (config: { url: string; username: string; password: string }) =>
+    ipcRenderer.invoke("cloud:restore", config),
 });

@@ -1,12 +1,16 @@
-import { Check, ChevronDown, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Cloud, CloudUpload, Download, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAppearanceThemes } from "../domain/themes";
+import { computeCloudDiff, getDiffSummary, hasDiffChanges } from "../domain/cloudDiff";
+import { migrateAppData } from "../storage/storageAdapter";
 import { collectImageReferencesFromNotes } from "../utils/imageRefs";
 import type {
   AppData,
   AppearanceTheme,
   AppearanceThemeId,
   CloseBehavior,
+  CloudSyncConfig,
+  CloudSyncDiff,
   StartupView,
 } from "../domain/types";
 
@@ -24,6 +28,10 @@ interface SettingsPageProps {
   onChangeLaunchAtLogin(value: boolean): void;
   onChangeCloseBehavior(value: CloseBehavior): void;
   onReplaceData(rawData: unknown): void;
+  cloudSync?: CloudSyncConfig;
+  lastSyncTime?: string;
+  onUpdateCloudSyncConfig(config: CloudSyncConfig): void;
+  onSetLastSyncTime(time: string): void;
 }
 
 type ThemeDraft = Omit<AppearanceTheme, "id">;
@@ -234,6 +242,10 @@ export function SettingsPage({
   onChangeLaunchAtLogin,
   onChangeCloseBehavior,
   onReplaceData,
+  cloudSync,
+  lastSyncTime,
+  onUpdateCloudSyncConfig,
+  onSetLastSyncTime,
 }: SettingsPageProps) {
   const themes = getAppearanceThemes(customThemes);
   const [draft, setDraft] = useState<ThemeDraft>(defaultDraft);
@@ -243,6 +255,35 @@ export function SettingsPage({
   const [dataMessage, setDataMessage] = useState("");
   const [pendingImportData, setPendingImportData] = useState<unknown | null>(null);
   const [clearingData, setClearingData] = useState(false);
+
+  // Cloud sync state
+  const [cloudUrl, setCloudUrl] = useState(cloudSync?.url ?? "https://dav.jianguoyun.com/dav/");
+  const [cloudUsername, setCloudUsername] = useState(cloudSync?.username ?? "");
+  const [cloudPassword, setCloudPassword] = useState(cloudSync?.password ?? "");
+  const [cloudMessage, setCloudMessage] = useState("");
+  const [cloudWorking, setCloudWorking] = useState(false);
+  const [cloudDiff, setCloudDiff] = useState<CloudSyncDiff | null>(null);
+  const [cloudDiffDirection, setCloudDiffDirection] = useState<"upload" | "restore">("upload");
+  const [cloudBackupDate, setCloudBackupDate] = useState<string | null>(null);
+
+  function getCloudConfig(): CloudSyncConfig {
+    return { url: cloudUrl.trim(), username: cloudUsername.trim(), password: cloudPassword };
+  }
+
+  function saveCloudConfig(config?: CloudSyncConfig) {
+    const cfg = config ?? getCloudConfig();
+    if (!cfg.url || !cfg.username || !cfg.password) return;
+    onUpdateCloudSyncConfig(cfg);
+  }
+
+  // Sync local cloud fields from store on mount / store change
+  useEffect(() => {
+    if (cloudSync) {
+      setCloudUrl(cloudSync.url);
+      setCloudUsername(cloudSync.username);
+      setCloudPassword(cloudSync.password);
+    }
+  }, [cloudSync?.url, cloudSync?.username, cloudSync?.password]);
 
   useEffect(() => {
     setLastBackupPath(localStorage.getItem("mnemo:lastBackupPath") ?? "");
@@ -408,6 +449,163 @@ export function SettingsPage({
     setDataMessage("当前数据已清空。");
   }
 
+  // ---- Cloud sync operations ----
+
+  async function cloudTestConnection() {
+    const config = getCloudConfig();
+    if (!config.url || !config.username || !config.password) {
+      setCloudMessage("请填写完整的服务器地址、用户名和应用密码。");
+      return;
+    }
+    saveCloudConfig(config);
+    setCloudWorking(true);
+    setCloudMessage("");
+    try {
+      const api = window.ebbinghausDesktop;
+      if (!api?.cloudTestConnection) {
+        setCloudMessage("云存档功能仅在桌面版可用。");
+        return;
+      }
+      const result = await api.cloudTestConnection(config);
+      if (result.ok) {
+        setCloudMessage("连接成功！");
+      } else {
+        setCloudMessage(`连接失败：${result.error}`);
+      }
+    } catch (error) {
+      setCloudMessage(`连接失败：${(error as Error).message}`);
+    } finally {
+      setCloudWorking(false);
+    }
+  }
+
+  async function cloudFetchAndDiff(direction: "upload" | "restore") {
+    const config = getCloudConfig();
+    if (!config.url || !config.username || !config.password) {
+      setCloudMessage("请填写完整的服务器地址、用户名和应用密码。");
+      return;
+    }
+    saveCloudConfig(config);
+    setCloudWorking(true);
+    setCloudMessage("");
+    try {
+      const api = window.ebbinghausDesktop;
+      if (!api?.cloudFetchRemote) {
+        setCloudMessage("云存档功能仅在桌面版可用。");
+        return;
+      }
+      const result = await api.cloudFetchRemote(config);
+      if (result.ok) {
+        const remoteData = migrateAppData(result.data);
+        const diff = direction === "upload"
+          ? computeCloudDiff(appData, remoteData)
+          : computeCloudDiff(remoteData, appData);
+        setCloudBackupDate(
+          typeof (result.data as { lastSyncTime?: string }).lastSyncTime === "string"
+            ? (result.data as { lastSyncTime: string }).lastSyncTime
+            : "未知",
+        );
+        if (!hasDiffChanges(diff)) {
+          setCloudMessage("本地数据与云端一致，无需同步。");
+        } else {
+          setCloudDiff(diff);
+          setCloudDiffDirection(direction);
+        }
+      } else if ("notFound" in result && result.notFound) {
+        // No remote data yet – for upload, show empty diff
+        if (direction === "upload") {
+          const diff = computeCloudDiff(appData, {
+            schemaVersion: 7,
+            plans: [],
+            knowledgeItems: [],
+            scheduleEntries: [],
+            activePlanId: null,
+            appearanceThemeId: "frostGray",
+            customAppearanceThemes: [],
+            startupView: "today",
+            launchAtLogin: false,
+            closeBehavior: "quit",
+          });
+          setCloudBackupDate(null);
+          if (!hasDiffChanges(diff)) {
+            setCloudMessage("本地暂无数据可上传。");
+          } else {
+            setCloudDiff(diff);
+            setCloudDiffDirection("upload");
+          }
+        } else {
+          setCloudMessage("云端暂无备份数据。");
+        }
+      } else {
+        setCloudMessage(`读取云端失败：${result.error}`);
+      }
+    } catch (error) {
+      setCloudMessage(`操作失败：${(error as Error).message}`);
+    } finally {
+      setCloudWorking(false);
+    }
+  }
+
+  async function cloudConfirmUpload() {
+    setCloudDiff(null);
+    setCloudWorking(true);
+    setCloudMessage("");
+    try {
+      const config = getCloudConfig();
+      const api = window.ebbinghausDesktop!;
+      const content = JSON.stringify({ ...appData, lastSyncTime: new Date().toISOString() }, null, 2);
+      const imageNames = collectImageReferencesFromNotes(appData.knowledgeItems.map((i) => i.noteMarkdown));
+      let images: Record<string, string> | undefined;
+      if (imageNames.length > 0 && api.readImages) {
+        images = await api.readImages(imageNames);
+      }
+      const result = await api.cloudUpload!({ ...config, content, images });
+      if (result.ok) {
+        const time = new Date().toISOString();
+        onSetLastSyncTime(time);
+        setCloudMessage("上传成功！");
+      } else {
+        setCloudMessage(`上传失败：${result.error}`);
+      }
+    } catch (error) {
+      setCloudMessage(`上传失败：${(error as Error).message}`);
+    } finally {
+      setCloudWorking(false);
+    }
+  }
+
+  async function cloudConfirmRestore() {
+    setCloudDiff(null);
+    setCloudWorking(true);
+    setCloudMessage("");
+    try {
+      const config = getCloudConfig();
+      const api = window.ebbinghausDesktop!;
+      const result = await api.cloudRestore!(config);
+      if (result.ok) {
+        const parsed = JSON.parse(result.content);
+        if (result.images && Object.keys(result.images).length > 0 && api.writeImages) {
+          await api.writeImages(result.images);
+        }
+        if (api.pruneImages) {
+          const keepNames = collectImageReferencesFromNotes(
+            (parsed.knowledgeItems ?? []).map((i: { noteMarkdown?: string }) => i.noteMarkdown ?? ""),
+          );
+          await api.pruneImages(keepNames);
+        }
+        onReplaceData(parsed);
+        onSetLastSyncTime(parsed.lastSyncTime ?? new Date().toISOString());
+        setCloudMessage("数据已从云端恢复。");
+      } else {
+        setCloudMessage(`恢复失败：${result.error}`);
+      }
+    } catch (error) {
+      setCloudMessage(`恢复失败：${(error as Error).message}`);
+    } finally {
+      setCloudWorking(false);
+    }
+  }
+
   return (
     <section className="settings-page">
       <div className="page-heading">
@@ -500,6 +698,125 @@ export function SettingsPage({
           </div>
           {dataMessage ? <p className="quiet-line">{dataMessage}</p> : null}
         </section>
+
+        {/* ---- Cloud Sync ---- */}
+        <section className="settings-section">
+          <div>
+            <p className="eyebrow">Cloud</p>
+            <h2>云存档</h2>
+            <p>通过 WebDAV 协议连接坚果云，手动备份/恢复数据。在坚果云「安全选项」中生成第三方应用密码。</p>
+          </div>
+          <div className="cloud-sync-form">
+            <input
+              aria-label="服务器地址"
+              placeholder="服务器地址"
+              value={cloudUrl}
+              onChange={(e) => setCloudUrl(e.target.value)}
+            />
+            <input
+              aria-label="用户名"
+              placeholder="用户名（坚果云邮箱）"
+              value={cloudUsername}
+              onChange={(e) => setCloudUsername(e.target.value)}
+            />
+            <input
+              aria-label="应用密码"
+              type="password"
+              placeholder="应用密码"
+              value={cloudPassword}
+              onChange={(e) => setCloudPassword(e.target.value)}
+            />
+          </div>
+          <div className="settings-action-row">
+            <button
+              type="button"
+              className="quiet-button"
+              disabled={cloudWorking}
+              onClick={cloudTestConnection}
+            >
+              <RefreshCw size={14} />
+              测试连接
+            </button>
+            <button
+              type="button"
+              className="quiet-button"
+              disabled={cloudWorking}
+              onClick={() => cloudFetchAndDiff("upload")}
+            >
+              <CloudUpload size={14} />
+              上传到云端
+            </button>
+            <button
+              type="button"
+              className="danger-button"
+              disabled={cloudWorking}
+              onClick={() => cloudFetchAndDiff("restore")}
+            >
+              <Download size={14} />
+              从云端恢复
+            </button>
+          </div>
+          {lastSyncTime ? (
+            <p className="quiet-line">上次同步：{new Date(lastSyncTime).toLocaleString("zh-CN")}</p>
+          ) : null}
+          {cloudMessage ? <p className="quiet-line">{cloudMessage}</p> : null}
+        </section>
+
+        {/* ---- Cloud diff confirmation dialog ---- */}
+        {cloudDiff ? (
+          <div className="theme-modal-backdrop" role="presentation" onMouseDown={() => setCloudDiff(null)}>
+            <section
+              className="theme-modal confirm-modal cloud-diff-modal"
+              onMouseDown={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={cloudDiffDirection === "upload" ? "确认上传到云端" : "确认从云端恢复"}
+            >
+              <header>
+                <div>
+                  <p className="eyebrow">Cloud</p>
+                  <h2>{cloudDiffDirection === "upload" ? "即将上传到云端" : "即将从云端恢复"}</h2>
+                  <p>
+                    云端备份日期：{cloudBackupDate
+                      ? new Date(cloudBackupDate).toLocaleString("zh-CN")
+                      : "从未备份"}
+                  </p>
+                </div>
+                <button type="button" className="icon-button" onClick={() => setCloudDiff(null)} aria-label="关闭">
+                  <X size={16} />
+                </button>
+              </header>
+
+              <div className="cloud-diff-body">
+                <DiffList label="新增计划" items={cloudDiff.newPlans} prefix="+" />
+                <DiffList label="删除计划" items={cloudDiff.deletedPlans} prefix="-" />
+                <DiffList label="修改计划" items={cloudDiff.modifiedPlans} prefix="*" />
+                <DiffList label="新增知识点/事项" items={cloudDiff.newKnowledge} prefix="+" />
+                <DiffList label="删除知识点/事项" items={cloudDiff.deletedKnowledge} prefix="-" />
+                <DiffList label="修改标题" items={cloudDiff.modifiedKnowledge} prefix="*" />
+                <DiffList label="笔记变更" items={cloudDiff.modifiedNotes} prefix="*" />
+
+                <div className="cloud-diff-summary">
+                  <Cloud size={14} />
+                  <span>{getDiffSummary(cloudDiff)}</span>
+                </div>
+              </div>
+
+              <footer>
+                <button type="button" className="quiet-button" onClick={() => setCloudDiff(null)}>
+                  取消
+                </button>
+                <button
+                  className="appearance-create-button"
+                  type="button"
+                  onClick={cloudDiffDirection === "upload" ? cloudConfirmUpload : cloudConfirmRestore}
+                >
+                  {cloudDiffDirection === "upload" ? "确认上传" : "确认恢复"}
+                </button>
+              </footer>
+            </section>
+          </div>
+        ) : null}
 
         <section className="settings-section">
           <div>
@@ -730,6 +1047,23 @@ export function SettingsPage({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function DiffList({ label, items, prefix }: { label: string; items: string[]; prefix: string }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="cloud-diff-group">
+      <p className="cloud-diff-label">{label}（{items.length}）</p>
+      <ul>
+        {items.map((item, i) => (
+          <li key={i}>
+            <span className="cloud-diff-prefix">{prefix}</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

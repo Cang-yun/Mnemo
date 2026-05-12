@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppData,
+  CloudSyncConfig,
   CreatePlanInput,
   KnowledgeItem,
   ReviewFeedback,
@@ -185,6 +186,14 @@ export function useAppStore() {
     updateData((current) => ({ ...current, closeBehavior }));
   }
 
+  function updateCloudSyncConfig(config: CloudSyncConfig) {
+    updateData((current) => ({ ...current, cloudSync: config }));
+  }
+
+  function setLastSyncTime(time: string) {
+    updateData((current) => ({ ...current, lastSyncTime: time }));
+  }
+
   function replaceData(rawData: unknown) {
     const next = migrateAppData(rawData);
     setData(next);
@@ -326,6 +335,8 @@ export function useAppStore() {
     setStartupView,
     setLaunchAtLogin,
     setCloseBehavior,
+    updateCloudSyncConfig,
+    setLastSyncTime,
     replaceData,
     addKnowledge,
     toggleEntry,

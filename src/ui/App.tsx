@@ -268,6 +268,10 @@ function AppShell() {
               onChangeLaunchAtLogin={store.setLaunchAtLogin}
               onChangeCloseBehavior={store.setCloseBehavior}
               onReplaceData={store.replaceData}
+              cloudSync={store.data.cloudSync}
+              lastSyncTime={store.data.lastSyncTime}
+              onUpdateCloudSyncConfig={store.updateCloudSyncConfig}
+              onSetLastSyncTime={store.setLastSyncTime}
             />
           ) : null}
 

@@ -41,6 +41,34 @@ declare global {
         content: string;
       }): Promise<{ canceled: true } | { canceled: false; filePath: string }>;
       importBackup(): Promise<{ canceled: true } | { canceled: false; content: string }>;
+      cloudTestConnection(config: {
+        url: string;
+        username: string;
+        password: string;
+      }): Promise<{ ok: true } | { ok: false; error: string }>;
+      cloudFetchRemote(config: {
+        url: string;
+        username: string;
+        password: string;
+      }): Promise<
+        | { ok: true; data: unknown }
+        | { ok: false; error: string; notFound?: boolean }
+      >;
+      cloudUpload(payload: {
+        url: string;
+        username: string;
+        password: string;
+        content: string;
+        images?: Record<string, string>;
+      }): Promise<{ ok: true } | { ok: false; error: string }>;
+      cloudRestore(config: {
+        url: string;
+        username: string;
+        password: string;
+      }): Promise<
+        | { ok: true; content: string; images: Record<string, string> }
+        | { ok: false; error: string }
+      >;
     };
   }
 }

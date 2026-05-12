@@ -2,6 +2,7 @@ import type {
   AppData,
   AppearanceTheme,
   CloseBehavior,
+  CloudSyncConfig,
   ReviewFeedback,
   ScheduleEntry,
   StartupView,
@@ -126,6 +127,8 @@ export function migrateAppData(rawData: unknown): AppData {
     startupView: normalizeStartupView(data.startupView),
     launchAtLogin: data.launchAtLogin === true,
     closeBehavior: normalizeCloseBehavior(data.closeBehavior),
+    cloudSync: normalizeCloudSyncConfig(data.cloudSync),
+    lastSyncTime: typeof data.lastSyncTime === "string" ? data.lastSyncTime : undefined,
   };
 }
 
@@ -308,4 +311,21 @@ function normalizeCustomAppearanceThemes(value: unknown): AppearanceTheme[] {
       accentSoft: theme.accentSoft!,
       weak: theme.weak!,
     }));
+}
+
+function normalizeCloudSyncConfig(value: unknown): CloudSyncConfig | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const cfg = value as Partial<CloudSyncConfig>;
+  if (
+    typeof cfg.url === "string" && cfg.url.trim().length > 0 &&
+    typeof cfg.username === "string" && cfg.username.trim().length > 0 &&
+    typeof cfg.password === "string" && cfg.password.trim().length > 0
+  ) {
+    return {
+      url: cfg.url.trim(),
+      username: cfg.username.trim(),
+      password: cfg.password,
+    };
+  }
+  return undefined;
 }
