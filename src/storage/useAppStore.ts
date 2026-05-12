@@ -27,12 +27,14 @@ import {
 } from "./appMutations";
 import { FileStorageAdapter } from "./fileStorageAdapter";
 import { createEmptyAppData, migrateAppData } from "./storageAdapter";
+import { useTodayIso } from "../ui/useTodayIso";
 
 export function useAppStore() {
   const storage = useMemo(() => new FileStorageAdapter(), []);
   const [data, setData] = useState<AppData>(() => createEmptyAppData());
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const today = useTodayIso();
 
   // Persistence is asynchronous (IPC to the main process writes
   // state.json). We serialize saves through a promise chain so that a later
@@ -56,8 +58,8 @@ export function useAppStore() {
   }, [storage]);
 
   const derivedScheduleEntries = useMemo(
-    () => deriveScheduleEntries(data.plans, data.knowledgeItems, data.scheduleEntries),
-    [data.plans, data.knowledgeItems, data.scheduleEntries],
+    () => deriveScheduleEntries(data.plans, data.knowledgeItems, data.scheduleEntries, today),
+    [data.plans, data.knowledgeItems, data.scheduleEntries, today],
   );
   const visibleData = useMemo(
     () => ({ ...data, scheduleEntries: derivedScheduleEntries }),
@@ -308,6 +310,7 @@ export function useAppStore() {
     data: visibleData,
     rawData: data,
     loaded,
+    today,
     activePlan,
     activePlanItems,
     activePlanEntries,

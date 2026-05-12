@@ -1,8 +1,16 @@
-import type { AppData, AppearanceTheme, CloseBehavior, StartupView } from "../domain/types";
+import type {
+  AppData,
+  AppearanceTheme,
+  CloseBehavior,
+  ReviewFeedback,
+  ScheduleEntry,
+  StartupView,
+} from "../domain/types";
 import { normalizePlanInput } from "../domain/planInput";
 import { syncWeakKnowledgeTags } from "../domain/feedbackStats";
 import {
   consolidateScheduleEntries,
+  createId,
   createScheduleEntriesForKnowledge,
   getDefaultPlanTag,
   normalizeTags,
@@ -94,19 +102,24 @@ export function migrateAppData(rawData: unknown): AppData {
     : [];
 
   const rawScheduleEntries = Array.isArray(data.scheduleEntries) ? data.scheduleEntries : [];
+  const knowledgeById = new Map(knowledgeItems.map((item) => [item.id, item]));
   const scheduleEntries = knowledgeItems.flatMap((item) => {
     const plan = planById.get(item.planId);
     if (!plan) return [];
     return createScheduleEntriesForKnowledge(plan, item, rawScheduleEntries);
   });
-  const syncedKnowledgeItems = syncWeakKnowledgeTags(knowledgeItems, scheduleEntries);
+  const remedialEntries = extractRemedialEntries(rawScheduleEntries, planById, knowledgeById);
+  const syncedKnowledgeItems = syncWeakKnowledgeTags(
+    knowledgeItems,
+    [...scheduleEntries, ...remedialEntries],
+  );
   const customAppearanceThemes = normalizeCustomAppearanceThemes(data.customAppearanceThemes);
 
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     plans,
     knowledgeItems: syncedKnowledgeItems,
-    scheduleEntries: consolidateScheduleEntries(scheduleEntries),
+    scheduleEntries: consolidateScheduleEntries([...scheduleEntries, ...remedialEntries]),
     activePlanId,
     appearanceThemeId: normalizeAppearanceThemeId(data.appearanceThemeId, customAppearanceThemes),
     customAppearanceThemes,
@@ -115,6 +128,102 @@ export function migrateAppData(rawData: unknown): AppData {
     closeBehavior: normalizeCloseBehavior(data.closeBehavior),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Remedial entry preservation helpers
+// ---------------------------------------------------------------------------
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const VALID_FEEDBACKS: readonly ReviewFeedback[] = [
+  "remembered",
+  "fuzzy",
+  "forgotten",
+  "skipped",
+];
+
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const year = parsed.getFullYear();
+  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
+  const day = `${parsed.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}` === value;
+}
+
+function normalizeFeedback(value: unknown): ReviewFeedback | undefined {
+  return VALID_FEEDBACKS.includes(value as ReviewFeedback)
+    ? (value as ReviewFeedback)
+    : undefined;
+}
+
+function extractRemedialEntries(
+  rawEntries: unknown[],
+  planById: Map<string, AppData["plans"][number]>,
+  knowledgeById: Map<string, AppData["knowledgeItems"][number]>,
+): ScheduleEntry[] {
+  const result: ScheduleEntry[] = [];
+
+  for (const raw of rawEntries) {
+    if (!raw || typeof raw !== "object") continue;
+    const candidate = raw as Partial<ScheduleEntry>;
+    if (candidate.kind !== "remedial") continue;
+    if (typeof candidate.planId !== "string" || !planById.has(candidate.planId)) continue;
+    if (typeof candidate.knowledgeId !== "string" || !knowledgeById.has(candidate.knowledgeId)) continue;
+    if (!isValidIsoDate(candidate.date)) continue;
+
+    const id =
+      typeof candidate.id === "string" && candidate.id.length > 0
+        ? candidate.id
+        : createId("entry");
+    const createdAt =
+      typeof candidate.createdAt === "string" && candidate.createdAt.length > 0
+        ? candidate.createdAt
+        : `${candidate.date}T00:00:00.000Z`;
+    const completed = candidate.completed === true;
+    const completedDate =
+      completed && isValidIsoDate(candidate.completedDate) ? candidate.completedDate : undefined;
+    const completedAt =
+      completed && typeof candidate.completedAt === "string" && candidate.completedAt.length > 0
+        ? candidate.completedAt
+        : undefined;
+    const deferredUntil = isValidIsoDate(candidate.deferredUntil)
+      ? candidate.deferredUntil
+      : undefined;
+    const postponedAt =
+      typeof candidate.postponedAt === "string" && candidate.postponedAt.length > 0
+        ? candidate.postponedAt
+        : undefined;
+    const adaptiveSourceEntryId =
+      typeof candidate.adaptiveSourceEntryId === "string" && candidate.adaptiveSourceEntryId.length > 0
+        ? candidate.adaptiveSourceEntryId
+        : undefined;
+
+    result.push({
+      id,
+      planId: candidate.planId,
+      knowledgeId: candidate.knowledgeId,
+      date: candidate.date,
+      kind: "remedial",
+      completed,
+      completedDate,
+      completedAt,
+      feedback: normalizeFeedback(candidate.feedback),
+      postponedAt,
+      deferredUntil,
+      adaptiveSourceEntryId,
+      adaptiveFeedback: normalizeFeedback(candidate.adaptiveFeedback),
+      createdAt,
+    });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Other normalization helpers
+// ---------------------------------------------------------------------------
 
 function normalizeStartupView(value: unknown): StartupView {
   if (

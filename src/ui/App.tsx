@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { todayIso } from "../domain/date";
 import { getAppearanceTheme, getPlanTheme } from "../domain/themes";
 import { subscribe as subscribeDirty, hasAnyDirty } from "../storage/unsavedGuard";
 import { useAppStore } from "../storage/useAppStore";
@@ -29,7 +28,7 @@ export function App() {
 function AppShell() {
   const store = useAppStore();
   const [view, setView] = useState<AppView>(store.data.startupView);
-  const [focusDate, setFocusDate] = useState(todayIso());
+  const [focusDate, setFocusDate] = useState(store.today);
   const [focusKnowledgeId, setFocusKnowledgeId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const guard = useUnsavedGuard();
@@ -105,7 +104,7 @@ function AppShell() {
   );
 
   const openPlan = useCallback(
-    (planId: string, date = todayIso()) => {
+    (planId: string, date = store.today) => {
       void guard.runGuarded(() => {
         store.setActivePlan(planId);
         setFocusDate(date);
@@ -200,7 +199,7 @@ function AppShell() {
               plans={store.data.plans}
               knowledgeItems={store.data.knowledgeItems}
               scheduleEntries={store.data.scheduleEntries}
-              today={todayIso()}
+              today={store.today}
               onOpenPlan={openPlan}
               onToggleEntry={store.toggleEntry}
               onCompleteEntry={store.completeEntry}
