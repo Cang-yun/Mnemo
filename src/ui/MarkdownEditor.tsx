@@ -37,12 +37,12 @@ const HEADING_LEVELS: HeadingLevel[] = [1, 2, 3, 4, 5, 6];
 
 export function MarkdownEditor({ value, onChange, editorId, label = "笔记" }: MarkdownEditorProps) {
   const localValueRef = useRef(value);
-  const [draft, setDraft] = useState(value);
-  const dirty = draft !== value;
+  const [draft, setDraft] = useState(() => normalizeMarkdown(value));
+  const dirty = draft !== normalizeMarkdown(value);
   const [linkDialog, setLinkDialog] = useState<null | { href: string; text: string; isNew: boolean }>(null);
 
   useEffect(() => {
-    setDraft(value);
+    setDraft(normalizeMarkdown(value));
   }, [value]);
 
   const extensions = useMemo(() => createMarkdownEditorExtensions(), []);
@@ -146,13 +146,14 @@ export function MarkdownEditor({ value, onChange, editorId, label = "笔记" }: 
 
   useEffect(() => {
     if (!editor || value === localValueRef.current) return;
-    localValueRef.current = value;
-    setDraft(value);
-    editor.commands.setContent(value || "", { contentType: "markdown", emitUpdate: false });
+    const nv = normalizeMarkdown(value);
+    localValueRef.current = nv;
+    setDraft(nv);
+    editor.commands.setContent(nv || "", { contentType: "markdown", emitUpdate: false });
   }, [editor, value]);
 
   const handleSave = useCallback(() => {
-    onChange(draft);
+    onChange(normalizeMarkdown(draft));
   }, [draft, onChange]);
 
   const openLinkDialog = useCallback(() => {

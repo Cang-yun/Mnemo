@@ -243,7 +243,11 @@ const EditorShortcuts = Extension.create({
 });
 
 export function normalizeMarkdown(markdown: string) {
-  return markdown.replace(/\r\n/g, "\n").replace(/\n{4,}/g, "\n\n\n").trim();
+  return markdown
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export function createMarkdownEditorExtensions(): AnyExtension[] {
