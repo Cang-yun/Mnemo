@@ -23,7 +23,7 @@
 
 - **笔记系统** — 内置Markdown 编辑器，支持 GFM 语法（标题、粗斜体、表格、代码块、任务列表、图片粘贴），可导出为 Markdown 文件
 
-![note2](docs/note2.png)![note1](docs/note1.png
+![note2](docs/note2.png)
 
 - **薄弱追踪** — 遗忘或模糊的知识点自动标记"薄弱"，进度页集中查看和复习
 
