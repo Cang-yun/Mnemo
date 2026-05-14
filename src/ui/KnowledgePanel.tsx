@@ -1,4 +1,4 @@
-import { ChevronDown, ExternalLink, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ExternalLink, Pencil, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getKnowledgeFeedbackStats } from "../domain/feedbackStats";
 import { getKnowledgeProgress } from "../domain/schedule";
@@ -23,48 +23,6 @@ interface KnowledgePanelProps {
   onOpenNote?(knowledgeId: string): void;
 }
 
-interface KnowledgeTitleEditorProps {
-  item: KnowledgeItem;
-  onUpdateTitle(knowledgeId: string, title: string): void;
-}
-
-function KnowledgeTitleEditor({ item, onUpdateTitle }: KnowledgeTitleEditorProps) {
-  const [draftTitle, setDraftTitle] = useState(item.title);
-
-  useEffect(() => {
-    setDraftTitle(item.title);
-  }, [item.id, item.title]);
-
-  function commitTitle() {
-    const nextTitle = draftTitle.trim();
-    if (!nextTitle) {
-      setDraftTitle(item.title);
-      return;
-    }
-
-    if (nextTitle !== item.title) {
-      onUpdateTitle(item.id, nextTitle);
-    }
-  }
-
-  return (
-    <input
-      className="title-editor"
-      value={draftTitle}
-      onChange={(event) => setDraftTitle(event.target.value)}
-      onBlur={commitTitle}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") {
-          setDraftTitle(item.title);
-          event.currentTarget.blur();
-        }
-      }}
-      aria-label="知识点标题"
-    />
-  );
-}
-
 function formatKnowledgeDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value || "未知";
@@ -80,6 +38,8 @@ function formatKnowledgeDateTime(value: string) {
 
 interface KnowledgeTagsEditorProps {
   item: KnowledgeItem;
+  defaultEditing?: boolean;
+  showToggle?: boolean;
   onUpdateTags(knowledgeId: string, tags: string[]): void;
 }
 
@@ -90,14 +50,21 @@ function splitTags(value: string) {
     .filter(Boolean);
 }
 
-function KnowledgeTagsEditor({ item, onUpdateTags }: KnowledgeTagsEditorProps) {
+function KnowledgeTagsEditor({
+  item,
+  defaultEditing = false,
+  showToggle = true,
+  onUpdateTags,
+}: KnowledgeTagsEditorProps) {
   const [draftTag, setDraftTag] = useState("");
+  const [editing, setEditing] = useState(defaultEditing);
   const tags = item.tags ?? [];
   const defaultTag = tags[0];
 
   useEffect(() => {
     setDraftTag("");
-  }, [item.id]);
+    setEditing(defaultEditing);
+  }, [defaultEditing, item.id]);
 
   function addTags(value = draftTag) {
     const nextTags = splitTags(value);
@@ -116,7 +83,15 @@ function KnowledgeTagsEditor({ item, onUpdateTags }: KnowledgeTagsEditorProps) {
 
   return (
     <div className="tag-editor">
-      <span>标签</span>
+      {showToggle ? (
+        <button
+        type="button"
+        className="tag-editor-toggle"
+        onClick={() => setEditing((current) => !current)}
+      >
+        {editing ? "收起标签" : "编辑标签"}
+        </button>
+      ) : null}
       <div className="tag-editor-body">
         <div className="tag-chip-list">
           {tags.map((tag) => {
@@ -141,6 +116,7 @@ function KnowledgeTagsEditor({ item, onUpdateTags }: KnowledgeTagsEditorProps) {
             );
           })}
         </div>
+        {editing ? (
         <div className="tag-add-row">
           <input
             value={draftTag}
@@ -169,7 +145,93 @@ function KnowledgeTagsEditor({ item, onUpdateTags }: KnowledgeTagsEditorProps) {
             添加
           </button>
         </div>
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+interface KnowledgeMetadataDialogProps {
+  item: KnowledgeItem;
+  itemLabel: string;
+  onClose(): void;
+  onUpdateTitle(knowledgeId: string, title: string): void;
+  onUpdateTags(knowledgeId: string, tags: string[]): void;
+}
+
+function KnowledgeMetadataDialog({
+  item,
+  itemLabel,
+  onClose,
+  onUpdateTitle,
+  onUpdateTags,
+}: KnowledgeMetadataDialogProps) {
+  const [draftTitle, setDraftTitle] = useState(item.title);
+
+  useEffect(() => {
+    setDraftTitle(item.title);
+  }, [item.id, item.title]);
+
+  function saveTitle() {
+    const nextTitle = draftTitle.trim();
+    if (nextTitle && nextTitle !== item.title) {
+      onUpdateTitle(item.id, nextTitle);
+    }
+    onClose();
+  }
+
+  return (
+    <div className="theme-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="theme-modal knowledge-meta-modal"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-knowledge-meta-title"
+      >
+        <header>
+          <div>
+            <p className="eyebrow">{itemLabel}</p>
+            <h2 id="edit-knowledge-meta-title">编辑标题和标签</h2>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="关闭">
+            <X size={16} />
+          </button>
+        </header>
+
+        <div className="knowledge-meta-modal-body">
+          <label className="knowledge-meta-field">
+            <span>标题</span>
+            <input
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") saveTitle();
+                if (event.key === "Escape") onClose();
+              }}
+              autoFocus
+            />
+          </label>
+          <div className="knowledge-meta-field">
+            <span>标签</span>
+            <KnowledgeTagsEditor
+              item={item}
+              defaultEditing
+              showToggle={false}
+              onUpdateTags={onUpdateTags}
+            />
+          </div>
+        </div>
+
+        <footer>
+          <button className="appearance-create-button" type="button" onClick={saveTitle}>
+            保存
+          </button>
+          <button type="button" className="quiet-button" onClick={onClose}>
+            取消
+          </button>
+        </footer>
+      </section>
     </div>
   );
 }
@@ -193,6 +255,7 @@ export function KnowledgePanel({
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [deletingItem, setDeletingItem] = useState<KnowledgeItem | null>(null);
+  const [editingMetadataItem, setEditingMetadataItem] = useState<KnowledgeItem | null>(null);
   const itemLabel = planKind === "task" ? "事项" : "知识点";
   const rowRefs = useRef<Map<string, HTMLElement>>(new Map());
   const guard = useUnsavedGuard();
@@ -248,6 +311,12 @@ export function KnowledgePanel({
   function deleteItem(item: KnowledgeItem) {
     void guard.runGuarded(() => {
       setDeletingItem(item);
+    });
+  }
+
+  function editMetadata(item: KnowledgeItem) {
+    void guard.runGuarded(() => {
+      setEditingMetadataItem(item);
     });
   }
 
@@ -320,6 +389,14 @@ export function KnowledgePanel({
                   </span>
                   <ChevronDown size={16} />
                 </button>
+                <button
+                  className="knowledge-meta-edit"
+                  onClick={() => editMetadata(item)}
+                  aria-label="编辑标题和标签"
+                  title="编辑标题和标签"
+                >
+                  <Pencil size={15} />
+                </button>
                 {onOpenNote ? (
                   <button
                     className="knowledge-open"
@@ -345,12 +422,6 @@ export function KnowledgePanel({
 
               <div className={open ? "knowledge-detail-shell open" : "knowledge-detail-shell"} aria-hidden={!open}>
                 <div className="knowledge-detail">
-                  <KnowledgeTitleEditor item={item} onUpdateTitle={onUpdateTitle} />
-                  <div className="knowledge-time-row">
-                    <span>创建：{formatKnowledgeDateTime(item.createdAt)}</span>
-                    <span>最后修改：{formatKnowledgeDateTime(item.updatedAt)}</span>
-                  </div>
-                  <KnowledgeTagsEditor item={item} onUpdateTags={onUpdateTags} />
                   {open ? (
                     <MarkdownEditor
                       editorId={`note:${item.id}`}
@@ -367,6 +438,16 @@ export function KnowledgePanel({
 
         {filteredItems.length === 0 ? <p className="quiet-line">{emptyText}</p> : null}
       </div>
+
+      {editingMetadataItem ? (
+        <KnowledgeMetadataDialog
+          item={editingMetadataItem}
+          itemLabel={itemLabel}
+          onClose={() => setEditingMetadataItem(null)}
+          onUpdateTitle={onUpdateTitle}
+          onUpdateTags={onUpdateTags}
+        />
+      ) : null}
 
       {deletingItem ? (
         <div className="theme-modal-backdrop" role="presentation" onMouseDown={() => setDeletingItem(null)}>
@@ -406,12 +487,12 @@ export function KnowledgePanel({
             </div>
 
             <footer>
-              <button type="button" className="quiet-button" onClick={() => setDeletingItem(null)}>
-                取消
-              </button>
               <button className="danger-button" type="button" onClick={confirmDeleteItem}>
                 <Trash2 size={14} />
                 删除
+              </button>
+              <button type="button" className="quiet-button" onClick={() => setDeletingItem(null)}>
+                取消
               </button>
             </footer>
           </section>

@@ -1624,7 +1624,7 @@ textarea:focus {
 
 .knowledge-summary-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -1642,6 +1642,7 @@ textarea:focus {
   text-align: left;
 }
 
+.knowledge-meta-edit,
 .knowledge-open {
   display: inline-flex;
   align-items: center;
@@ -1659,6 +1660,7 @@ textarea:focus {
     transform 150ms ease;
 }
 
+.knowledge-meta-edit:hover,
 .knowledge-open:hover {
   border-color: color-mix(in srgb, var(--app-accent) 48%, transparent);
   background: color-mix(in srgb, var(--app-accent-soft) 60%, transparent);
@@ -1781,7 +1783,7 @@ textarea:focus {
 
 .knowledge-detail {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
   overflow: hidden;
   opacity: 0;
@@ -1804,30 +1806,27 @@ textarea:focus {
   font-size: 18px;
 }
 
-.knowledge-time-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
-  font-size: 12px;
-}
-
 .tag-editor {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
 
-.tag-editor > span {
-  padding-top: 7px;
-  color: color-mix(in srgb, var(--app-ink) 50%, transparent);
+.tag-editor-toggle {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--app-surface) 58%, transparent);
+  color: var(--app-accent-strong);
   font-size: 12px;
+  font-weight: 650;
 }
 
 .tag-editor-body {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -1835,7 +1834,8 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 22px;
+  min-height: 28px;
+  align-content: center;
 }
 
 .tag-chip {
@@ -1885,6 +1885,31 @@ textarea:focus {
   background: color-mix(in srgb, var(--app-surface) 58%, transparent);
   color: var(--app-accent-strong);
   font-weight: 650;
+}
+
+.knowledge-meta-modal {
+  width: min(620px, calc(100vw - 48px));
+}
+
+.knowledge-meta-modal-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 12px;
+}
+
+.knowledge-meta-field {
+  display: grid;
+  gap: 7px;
+}
+
+.knowledge-meta-field > span {
+  color: color-mix(in srgb, var(--app-ink) 52%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.knowledge-meta-field .tag-editor {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .markdown-editor {
