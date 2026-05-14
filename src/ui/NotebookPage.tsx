@@ -14,6 +14,7 @@ interface NotebookPageProps {
   knowledgeItems: KnowledgeItem[];
   scheduleEntries: ScheduleEntry[];
   focusKnowledgeId?: string | null;
+  onFocusKnowledgeConsumed?(knowledgeId: string): void;
   onOpenPlan(planId: string): void;
   onUpdateNote(knowledgeId: string, noteMarkdown: string): void;
   onUpdateTitle(knowledgeId: string, title: string): void;
@@ -32,6 +33,7 @@ export function NotebookPage({
   knowledgeItems,
   scheduleEntries,
   focusKnowledgeId = null,
+  onFocusKnowledgeConsumed,
   onOpenPlan,
   onUpdateNote,
   onUpdateTitle,
@@ -269,6 +271,7 @@ export function NotebookPage({
                         ? focusKnowledgeId
                         : null
                     }
+                    onFocusKnowledgeConsumed={onFocusKnowledgeConsumed}
                     onUpdateNote={onUpdateNote}
                     onUpdateTitle={onUpdateTitle}
                     onUpdateTags={onUpdateTags}
@@ -286,6 +289,7 @@ export function NotebookPage({
 
         <aside className="notebook-tag-index">
           <p className="eyebrow">Tags</p>
+          <div className="notebook-tag-list">
           <button
             className={!activeTag && !searchMode ? "active" : ""}
             onClick={() => setActiveTag(null)}
@@ -303,6 +307,8 @@ export function NotebookPage({
               <small>{count}</small>
             </button>
           ))}
+          </div>
+          <div className="notebook-tag-actions">
           <button
             className="notebook-export-button"
             type="button"
@@ -316,6 +322,7 @@ export function NotebookPage({
           </button>
           <p className="quiet-line">{resultText}</p>
           {exportMessage ? <p className="quiet-line export-message">{exportMessage}</p> : null}
+          </div>
         </aside>
       </div>
     </section>

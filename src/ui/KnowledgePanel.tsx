@@ -15,6 +15,7 @@ interface KnowledgePanelProps {
   emptyText?: string;
   className?: string;
   focusKnowledgeId?: string | null;
+  onFocusKnowledgeConsumed?(knowledgeId: string): void;
   onUpdateNote(knowledgeId: string, noteMarkdown: string): void;
   onUpdateTitle(knowledgeId: string, title: string): void;
   onUpdateTags(knowledgeId: string, tags: string[]): void;
@@ -182,6 +183,7 @@ export function KnowledgePanel({
   emptyText = "没有匹配的知识点。",
   className = "",
   focusKnowledgeId = null,
+  onFocusKnowledgeConsumed,
   onUpdateNote,
   onUpdateTitle,
   onUpdateTags,
@@ -198,28 +200,33 @@ export function KnowledgePanel({
   useEffect(() => {
     if (!focusKnowledgeId) return;
     if (!knowledgeItems.some((item) => item.id === focusKnowledgeId)) return;
+    let cancelled = false;
+    const scrollFocusedItem = () => {
+      const element = rowRefs.current.get(focusKnowledgeId);
+      if (!element) return;
+      window.requestAnimationFrame(() => {
+        element.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    };
+
     if (openId === focusKnowledgeId) {
-      const existing = rowRefs.current.get(focusKnowledgeId);
-      if (existing) {
-        window.requestAnimationFrame(() => {
-          existing.scrollIntoView({ block: "center", behavior: "smooth" });
-        });
-      }
-      return;
+      scrollFocusedItem();
+      onFocusKnowledgeConsumed?.(focusKnowledgeId);
+      return undefined;
     }
 
     void guard.runGuarded(() => {
       setOpenId(focusKnowledgeId);
     }).then((ok) => {
-      if (!ok) return;
-      const element = rowRefs.current.get(focusKnowledgeId);
-      if (element) {
-        window.requestAnimationFrame(() => {
-          element.scrollIntoView({ block: "center", behavior: "smooth" });
-        });
-      }
+      if (!ok || cancelled) return;
+      scrollFocusedItem();
+      onFocusKnowledgeConsumed?.(focusKnowledgeId);
     });
-  }, [focusKnowledgeId, knowledgeItems, guard, openId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusKnowledgeId, knowledgeItems, guard, openId, onFocusKnowledgeConsumed]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();

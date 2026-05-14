@@ -16,10 +16,16 @@ export function ProgressPage({ plans, knowledgeItems, scheduleEntries, onOpenPla
   const learningPlans = plans.filter((plan) => plan.kind === "learning");
   const taskPlans = plans.filter((plan) => plan.kind === "task");
   const planById = new Map(plans.map((plan) => [plan.id, plan]));
-  const overdueTaskEntries = scheduleEntries.filter((entry) => {
-    const plan = planById.get(entry.planId);
-    return plan?.kind === "task" && !entry.completed && Boolean(entry.originalDate);
+  const weakCount = knowledgeItems.filter((item) => {
+    const plan = planById.get(item.planId);
+    return plan?.kind === "learning" && getKnowledgeFeedbackStats(item.id, scheduleEntries).weak;
   }).length;
+  const summaryItems = [
+    { label: "总体完成", value: `${totalProgress}%`, detail: `${completedEntries}/${totalEntries} 个任务` },
+    { label: "学习计划", value: learningPlans.length, detail: `${learningPlans.length} 个计划` },
+    { label: "事项计划", value: taskPlans.length, detail: `${taskPlans.length} 个计划` },
+    { label: "薄弱项", value: weakCount, detail: "需要复习关注" },
+  ];
   const weakItems = knowledgeItems
     .map((item) => ({
       item,
@@ -32,8 +38,7 @@ export function ProgressPage({ plans, knowledgeItems, scheduleEntries, onOpenPla
         b.stats.forgotten - a.stats.forgotten ||
         b.stats.fuzzy - a.stats.fuzzy ||
         a.item.title.localeCompare(b.item.title, "zh-CN"),
-    )
-    .slice(0, 5);
+    );
 
   return (
     <section className="progress-page">
@@ -41,22 +46,77 @@ export function ProgressPage({ plans, knowledgeItems, scheduleEntries, onOpenPla
         <div>
           <p className="eyebrow">Progress</p>
           <h1>进度</h1>
-          <p className="page-subtitle">
-            总体完成度 {totalProgress}% · {completedEntries}/{totalEntries} 个任务已完成 · 学习 {learningPlans.length} · 事项 {taskPlans.length}
-          </p>
+          <p className="page-subtitle">跟踪计划完成度和需要重点复习的内容。</p>
         </div>
       </div>
 
-      <div className="progress-list">
-        {weakItems.length > 0 ? (
-          <section className="weak-progress-section">
-            <div className="section-heading compact">
-              <div>
-                <p className="eyebrow">Review focus</p>
-                <h2>薄弱知识点</h2>
-              </div>
-              <span>{weakItems.length}</span>
+      <section className="progress-summary-grid" aria-label="进度概览">
+        {summaryItems.map((item) => (
+          <article className="progress-summary-card" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <small>{item.detail}</small>
+          </article>
+        ))}
+      </section>
+
+      <div className="progress-dashboard">
+        <section className="progress-plan-section" aria-label="计划进度">
+          <div className="section-heading compact">
+            <div>
+              <p className="eyebrow">Plans</p>
+              <h2>计划进度</h2>
             </div>
+            <span>{plans.length}</span>
+          </div>
+
+          <div className="progress-list">
+            {plans.map((plan) => {
+              const theme = getPlanTheme(plan.themeId);
+              const planItems = knowledgeItems.filter((item) => item.planId === plan.id);
+              const planEntries = scheduleEntries.filter((entry) => entry.planId === plan.id);
+              const completed = planEntries.filter((entry) => entry.completed).length;
+              const progress =
+                planEntries.length === 0 ? 0 : Math.round((completed / planEntries.length) * 100);
+
+              return (
+                <button
+                  key={plan.id}
+                  className="progress-row"
+                  onClick={() => onOpenPlan(plan.id)}
+                  style={
+                    {
+                      "--plan-accent": theme.accent,
+                      "--plan-soft": theme.accentSoft,
+                    } as React.CSSProperties
+                  }
+                >
+                  <span>
+                    <strong>{plan.name}</strong>
+                    <small>
+                      {planItems.length} {plan.kind === "task" ? "个事项" : "个知识点"} · {completed}/{planEntries.length} 个任务
+                    </small>
+                  </span>
+                  <span className="progress-meter">
+                    <i style={{ width: `${progress}%` }} />
+                  </span>
+                  <em>{progress}%</em>
+                </button>
+              );
+            })}
+            {plans.length === 0 ? <p className="quiet-line">还没有可统计的计划。</p> : null}
+          </div>
+        </section>
+
+        <aside className="weak-progress-section" aria-label="薄弱知识点">
+          <div className="section-heading compact">
+            <div>
+              <p className="eyebrow">Review focus</p>
+              <h2>薄弱知识点</h2>
+            </div>
+            <span>{weakItems.length}</span>
+          </div>
+          {weakItems.length > 0 ? (
             <div className="weak-progress-list">
               {weakItems.map(({ item, plan, stats }) => (
                 <button
@@ -74,45 +134,10 @@ export function ProgressPage({ plans, knowledgeItems, scheduleEntries, onOpenPla
                 </button>
               ))}
             </div>
-          </section>
-        ) : null}
-
-        {taskPlans.length > 0 ? <p className="quiet-line">事项逾期：{overdueTaskEntries} 个</p> : null}
-
-        {plans.map((plan) => {
-          const theme = getPlanTheme(plan.themeId);
-          const planItems = knowledgeItems.filter((item) => item.planId === plan.id);
-          const planEntries = scheduleEntries.filter((entry) => entry.planId === plan.id);
-          const completed = planEntries.filter((entry) => entry.completed).length;
-          const progress =
-            planEntries.length === 0 ? 0 : Math.round((completed / planEntries.length) * 100);
-
-          return (
-            <button
-              key={plan.id}
-              className="progress-row"
-              onClick={() => onOpenPlan(plan.id)}
-              style={
-                {
-                  "--plan-accent": theme.accent,
-                  "--plan-soft": theme.accentSoft,
-                } as React.CSSProperties
-              }
-            >
-              <span>
-                <strong>{plan.name}</strong>
-                <small>
-                  {planItems.length} {plan.kind === "task" ? "个事项" : "个知识点"} · {completed}/{planEntries.length} 个任务
-                </small>
-              </span>
-              <span className="progress-meter">
-                <i style={{ width: `${progress}%` }} />
-              </span>
-              <em>{progress}%</em>
-            </button>
-          );
-        })}
-        {plans.length === 0 ? <p className="quiet-line">还没有可统计的计划。</p> : null}
+          ) : (
+            <p className="quiet-line">暂无薄弱知识点。</p>
+          )}
+        </aside>
       </div>
     </section>
   );

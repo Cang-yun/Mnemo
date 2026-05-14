@@ -321,7 +321,8 @@ textarea:focus {
 
 .progress-page {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 20px;
   overflow: hidden;
 }
 
@@ -523,8 +524,7 @@ textarea:focus {
   font-weight: 700;
 }
 
-.plan-list,
-.progress-list {
+.plan-list {
   display: grid;
   align-content: start;
   gap: 10px;
@@ -2452,10 +2452,31 @@ textarea:focus {
 .notebook-plan-index,
 .notebook-tag-index {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
   gap: 8px;
+  height: 100%;
+  min-height: 0;
   padding-left: 20px;
   border-left: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
+}
+
+.notebook-tag-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
+}
+
+.notebook-tag-actions {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--app-ink) 10%, transparent);
 }
 
 .notebook-plan-index button,
@@ -2494,7 +2515,6 @@ textarea:focus {
 }
 
 .notebook-tag-index .notebook-export-button {
-  margin-top: 10px;
   border: 1px solid color-mix(in srgb, var(--app-accent) 34%, color-mix(in srgb, var(--app-ink) 12%, transparent));
   background: color-mix(in srgb, var(--app-accent-soft) 48%, color-mix(in srgb, var(--app-surface) 70%, transparent));
   color: var(--app-accent-strong);
@@ -2511,25 +2531,80 @@ textarea:focus {
   font-size: 12px;
 }
 
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-summary-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
+}
+
+.progress-summary-card span,
+.progress-summary-card small {
+  color: color-mix(in srgb, var(--app-ink) 48%, transparent);
+  font-size: 12px;
+}
+
+.progress-summary-card strong {
+  color: var(--app-ink);
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.progress-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+  gap: 34px;
+  min-height: 0;
+}
+
+.progress-plan-section,
+.weak-progress-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.progress-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+  padding-bottom: 34px;
+  scroll-padding-bottom: 34px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
+}
+
 .progress-row {
-  grid-template-columns: minmax(0, 1fr) 220px 46px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 220px) 46px;
 }
 
 .progress-meter {
   height: 5px;
 }
 
-.weak-progress-section {
-  display: grid;
-  gap: 8px;
-  padding-bottom: 18px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
-}
-
 .weak-progress-list {
   display: grid;
+  align-content: start;
   gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+  padding-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-accent) color-mix(in srgb, var(--app-ink) 8%, transparent);
 }
 
 .weak-progress-row {
@@ -3071,9 +3146,14 @@ textarea:focus {
   .workspace-grid,
   .today-layout,
   .notebook-layout,
+  .progress-dashboard,
   .appearance-theme-grid {
     grid-template-columns: 1fr;
     height: auto;
+  }
+
+  .progress-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .page-heading {
@@ -3095,6 +3175,15 @@ textarea:focus {
   .notebook-tag-index {
     border-left: 0;
     padding-left: 0;
+  }
+
+  .notebook-tag-index {
+    grid-template-rows: auto auto auto;
+    height: auto;
+  }
+
+  .notebook-tag-list {
+    max-height: 280px;
   }
 }
 

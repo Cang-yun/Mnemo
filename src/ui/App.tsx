@@ -124,6 +124,10 @@ function AppShell() {
     [guard],
   );
 
+  const consumeFocusKnowledge = useCallback((knowledgeId: string) => {
+    setFocusKnowledgeId((current) => (current === knowledgeId ? null : current));
+  }, []);
+
   const backToPlans = useCallback(() => {
     void guard.runGuarded(() => setView("plans"));
   }, [guard]);
@@ -236,6 +240,7 @@ function AppShell() {
               knowledgeItems={store.data.knowledgeItems}
               scheduleEntries={store.data.scheduleEntries}
               focusKnowledgeId={focusKnowledgeId}
+              onFocusKnowledgeConsumed={consumeFocusKnowledge}
               onOpenPlan={openPlan}
               onUpdateNote={store.updateKnowledgeNote}
               onUpdateTitle={store.updateKnowledgeTitle}
