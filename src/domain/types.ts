@@ -128,4 +128,5 @@ export interface CloudSyncDiff {
   deletedKnowledge: string[];
   modifiedKnowledge: string[];
   modifiedNotes: string[];
+  modifiedCompletion: string[];
 }

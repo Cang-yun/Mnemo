@@ -1,4 +1,4 @@
-import type { AppData, CloudSyncDiff, KnowledgeItem, Plan } from "./types";
+import type { AppData, CloudSyncDiff, KnowledgeItem, Plan, ScheduleEntry } from "./types";
 
 export function computeCloudDiff(local: AppData, remote: AppData): CloudSyncDiff {
   const localPlanById = new Map(local.plans.map((p) => [p.id, p]));
@@ -48,7 +48,23 @@ export function computeCloudDiff(local: AppData, remote: AppData): CloudSyncDiff
     }
   }
 
-  return { newPlans, deletedPlans, modifiedPlans, newKnowledge, deletedKnowledge, modifiedKnowledge, modifiedNotes };
+  const modifiedCompletion = collectCompletionChanges(
+    local.scheduleEntries,
+    remote.scheduleEntries,
+    localKnowledgeById,
+    remoteKnowledgeById,
+  );
+
+  return {
+    newPlans,
+    deletedPlans,
+    modifiedPlans,
+    newKnowledge,
+    deletedKnowledge,
+    modifiedKnowledge,
+    modifiedNotes,
+    modifiedCompletion,
+  };
 }
 
 function planChanged(a: Plan, b: Plan): boolean {
@@ -60,6 +76,58 @@ function planChanged(a: Plan, b: Plan): boolean {
     a.dayCount !== b.dayCount ||
     JSON.stringify(a.reviewOffsets) !== JSON.stringify(b.reviewOffsets)
   );
+}
+
+function collectCompletionChanges(
+  localEntries: ScheduleEntry[],
+  remoteEntries: ScheduleEntry[],
+  localKnowledgeById: Map<string, KnowledgeItem>,
+  remoteKnowledgeById: Map<string, KnowledgeItem>,
+) {
+  const remoteEntryById = new Map(remoteEntries.map((entry) => [entry.id, entry]));
+  const changedByKnowledge = new Map<string, string>();
+
+  for (const localEntry of localEntries) {
+    const remoteEntry = remoteEntryById.get(localEntry.id);
+    if (!remoteEntry || !completionStateChanged(localEntry, remoteEntry)) continue;
+
+    const title =
+      localKnowledgeById.get(localEntry.knowledgeId)?.title ??
+      remoteKnowledgeById.get(localEntry.knowledgeId)?.title ??
+      "未知知识点/事项";
+    changedByKnowledge.set(
+      localEntry.knowledgeId,
+      `${title}：${describeCompletionState(remoteEntry)} → ${describeCompletionState(localEntry)}`,
+    );
+  }
+
+  return Array.from(changedByKnowledge.values()).sort((a, b) => a.localeCompare(b, "zh-CN"));
+}
+
+function completionStateChanged(localEntry: ScheduleEntry, remoteEntry: ScheduleEntry) {
+  return (
+    localEntry.completed !== remoteEntry.completed ||
+    (localEntry.completedDate ?? "") !== (remoteEntry.completedDate ?? "") ||
+    (localEntry.feedback ?? "") !== (remoteEntry.feedback ?? "") ||
+    (localEntry.deferredUntil ?? "") !== (remoteEntry.deferredUntil ?? "") ||
+    (localEntry.postponedAt ?? "") !== (remoteEntry.postponedAt ?? "")
+  );
+}
+
+function describeCompletionState(entry: ScheduleEntry) {
+  const parts = [entry.completed ? "已完成" : "未完成"];
+  if (entry.completedDate) parts.push(entry.completedDate);
+  if (entry.feedback) parts.push(feedbackLabel(entry.feedback));
+  if (entry.deferredUntil) parts.push(`延期至 ${entry.deferredUntil}`);
+  return parts.join(" / ");
+}
+
+function feedbackLabel(feedback: ScheduleEntry["feedback"]) {
+  if (feedback === "remembered") return "记住";
+  if (feedback === "fuzzy") return "模糊";
+  if (feedback === "forgotten") return "遗忘";
+  if (feedback === "skipped") return "跳过";
+  return "";
 }
 
 export function getDiffSummary(diff: CloudSyncDiff) {
@@ -75,6 +143,7 @@ export function getDiffSummary(diff: CloudSyncDiff) {
   del(diff.deletedKnowledge.length, "知识点");
   mod(diff.modifiedKnowledge.length, "知识点");
   mod(diff.modifiedNotes.length, "笔记");
+  mod(diff.modifiedCompletion.length, "完成状态");
 
   return parts.join(" / ") || "无变化";
 }
@@ -87,6 +156,7 @@ export function hasDiffChanges(diff: CloudSyncDiff): boolean {
     diff.newKnowledge.length > 0 ||
     diff.deletedKnowledge.length > 0 ||
     diff.modifiedKnowledge.length > 0 ||
-    diff.modifiedNotes.length > 0
+    diff.modifiedNotes.length > 0 ||
+    diff.modifiedCompletion.length > 0
   );
 }

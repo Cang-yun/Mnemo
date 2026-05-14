@@ -796,6 +796,8 @@ export function SettingsPage({
                 <DiffList label="修改标题" items={cloudDiff.modifiedKnowledge} prefix="*" />
                 <DiffList label="笔记变更" items={cloudDiff.modifiedNotes} prefix="*" />
 
+                <DiffList label="完成状态变更" items={cloudDiff.modifiedCompletion} prefix="*" />
+
                 <div className="cloud-diff-summary">
                   <Cloud size={14} />
                   <span>{getDiffSummary(cloudDiff)}</span>
