@@ -2,7 +2,7 @@
 
 日程/笔记一体的长期任务规划软件，基于艾宾浩斯遗忘曲线。Capacitor + React + TypeScript。
 
-Android/IOS端见：[Mnemo-Android](https://github.com/Cang-yun/Mnemo-Android)
+Android/IOS端见：[Mnemo-Mobile](https://github.com/Cang-yun/Mnemo-Mobile)
 
 ## 功能
 
